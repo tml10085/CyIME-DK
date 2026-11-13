@@ -9,6 +9,14 @@ import android.content.Context
 internal object QwertySwipeSymbols {
     val rows = listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
     val keys = rows.joinToString("")
+    /**
+     * 丹麦语 29 键（和 xime.yaml 的 qwerty_danish 同排列）：a–z 和英文26键共用角标，
+     * 26 格之外的 å æ ø 没有可沿用的位置，角标单独存在英文那一套里，默认空着（「按键符号」的「丹麦语29键」页改）。
+     */
+    val danishRows = listOf("qwertyuiopå", "asdfghjklæø", "zxcvbnm")
+    val extraKeys = listOf("å", "æ", "ø")
+    /** 存得下角标的键：中文只有 26 键，英文另带 [extraKeys]。 */
+    private fun storedKeys(english: Boolean) = keys.map(Char::toString) + if (english) extraKeys else emptyList()
     private fun preset(vararg values: String) = keys.map(Char::toString).zip(values.toList()).toMap()
     // 用户 11-10 定：用他手机上存的「new」这一套作中文默认。
     val up = preset(
@@ -158,8 +166,7 @@ internal object QwertySwipeSymbols {
         val prefs = SettingsPreferences.getPrefsPublic(context)
         val prefix = prefix(english)
         return buildMap {
-            // buildMap has its own empty `keys`; qualify the fixed alphabet explicitly.
-            for (key in QwertySwipeSymbols.keys) for (direction in listOf("up", "down")) {
+            for (key in storedKeys(english)) for (direction in listOf("up", "down")) {
                 val id = "$direction.$key"
                 if (prefs.contains(prefix + id)) put(id, prefs.getString(prefix + id, "").orEmpty())
             }
@@ -169,7 +176,7 @@ internal object QwertySwipeSymbols {
     fun save(context: Context, english: Boolean, values: Map<String, String>, swipes: Map<String, String>? = null) {
         val edit = SettingsPreferences.getPrefsPublic(context).edit()
         val prefix = prefix(english)
-        for (key in keys) for (direction in listOf("up", "down")) {
+        for (key in storedKeys(english)) for (direction in listOf("up", "down")) {
             val id = "$direction.$key"
             val value = values[id]
             if (value == null) edit.remove(prefix + id) else edit.putString(prefix + id, value)
@@ -182,7 +189,8 @@ internal object QwertySwipeSymbols {
 
     fun apply(key: String, original: KeyGestureConfig?, overrides: Map<String, String>,
         custom: KeyGestureConfig?, english: Boolean = false, numberRow: Boolean = false): KeyGestureConfig? {
-        if (key !in up) return original
+        // å æ ø 只在英文那一套里有角标（预设为空）；其余 26 格之外的键（ñ、й…）照旧只用键盘配置。
+        if (key !in up && !(english && key in extraKeys)) return original
         fun gesture(direction: String, preset: String, configured: GestureDef?): GestureDef {
             // 开着数字行时，第一排存着的数字或 ! @ # …（「恢复预设」或载入版本时写进去的旧预设）和 11-11 以前的数字行预设算预设，
             // 换成数字行这一套。
@@ -198,7 +206,7 @@ internal object QwertySwipeSymbols {
                     else com.kingzcheung.xime.keyboard.GestureAction.COMMIT)
         }
         return (original ?: KeyGestureConfig()).copy(
-            swipeUp = gesture("up", up(english, numberRow).getValue(key), custom?.swipeUp),
-            swipeDown = gesture("down", down(english, numberRow).getValue(key), custom?.swipeDown))
+            swipeUp = gesture("up", up(english, numberRow)[key].orEmpty(), custom?.swipeUp ?: original?.swipeUp.takeIf { key in extraKeys }),
+            swipeDown = gesture("down", down(english, numberRow)[key].orEmpty(), custom?.swipeDown ?: original?.swipeDown.takeIf { key in extraKeys }))
     }
 }

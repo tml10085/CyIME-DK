@@ -39,6 +39,9 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
     val bottomGesture = if (reverseSwipe) "下拉" else "上拉"
     val scope = rememberCoroutineScope()
     var english by rememberSaveable { mutableStateOf(false) }
+    // 「丹麦语29键」页：改的是英文那一套（a–z 与英文26键共用），另加 å æ ø 三个键。为 true 时 english 一定是 true。
+    var danish by rememberSaveable { mutableStateOf(false) }
+    val danishAvailable = com.kingzcheung.xime.settings.InputLanguage.DANISH in com.kingzcheung.xime.settings.InputLanguage.supported
     // 合并键布局按键编辑：内置 14 键（FourteenKeySymbols）或某个自建双字母布局（CustomLayoutSymbols，存布局 id）；
     // null 是 26 键。不为 null 时 english 一定是 false。
     var merged by rememberSaveable { mutableStateOf<String?>(null) }
@@ -67,7 +70,7 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
     var sideReset by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun back() { if (!busy) onBack() }
     BackHandler { back() }
-    LaunchedEffect(english, merged, reload) {
+    LaunchedEffect(english, danish, merged, reload) {
         swipes = if (merged == null) LetterSwipeBindings.load(context, english) else emptyMap()
         loaded = false
         val layouts = withContext(Dispatchers.IO) {
@@ -88,15 +91,16 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
             else if (custom != null) CustomLayoutSymbols.load(context, custom)
             else QwertySwipeSymbols.load(context, english)
         val boardKeys = if (merged == FOURTEEN) FourteenKeySymbols.keys
-            else custom?.let(CustomLayoutSymbols::keys) ?: QwertySwipeSymbols.keys.map(Char::toString)
+            else custom?.let(CustomLayoutSymbols::keys)
+            ?: (QwertySwipeSymbols.keys.map(Char::toString) + if (danish) QwertySwipeSymbols.extraKeys else emptyList())
         if (editing !in boardKeys) editing = null
         versions = withContext(Dispatchers.IO) { QwertySwipeSymbols.versions(context, english) }
         originalValues = values
         loaded = true
     }
-    fun changeTab(nextEnglish: Boolean, nextSide: String?, nextMerged: String? = null) {
-        if (nextEnglish == english && nextSide == sideTarget && nextMerged == merged) return
-        english = nextEnglish; merged = nextMerged; sideTarget = nextSide; message = ""; editing = null
+    fun changeTab(nextEnglish: Boolean, nextSide: String?, nextMerged: String? = null, nextDanish: Boolean = false) {
+        if (nextEnglish == english && nextSide == sideTarget && nextMerged == merged && nextDanish == danish) return
+        english = nextEnglish; danish = nextDanish; merged = nextMerged; sideTarget = nextSide; message = ""; editing = null
     }
     // 改完一个键（或载入一个版本）立刻写入，键盘上马上生效；只存和原来不同的位置，其余仍跟预设走。
     fun persist(next: Map<String, String>, nextSwipes: Map<String, String>, done: String = "") {
@@ -146,8 +150,10 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
     val sideTargets = SideSymbolTarget.entries
     val side = sideTargets.firstOrNull { it.key == sideTarget }
     // 布局版本存的是 26 键 52 个位置，中文26键、英文26键各存各的（11-09 用户：英文布局没设计完没法存）。
-    val versionsAvailable = side == null && merged == null
-    val tabName = side?.label ?: customLayout?.name ?: if (fourteen) "中文14键" else if (english) "英文26键" else "中文26键"
+    // 版本只存 26 键的 52 格，不含 å æ ø：丹麦语页不出版本（a–z 在「英文26键」页存版本）。
+    val versionsAvailable = side == null && merged == null && !danish
+    val tabName = side?.label ?: customLayout?.name ?: if (fourteen) "中文14键" else if (danish) "丹麦语29键"
+        else if (english) "英文26键" else "中文26键"
     KeyboardSettingsScaffold("按键符号", ::back, preview = true, actions = {
         Box {
             IconButton(onClick = { menu = true }, enabled = !busy, modifier = Modifier.testTag("symbol-menu")) {
@@ -180,13 +186,18 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
     Column(modifier.settingsVerticalScroll().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     val sideIndex = sideTargets.indexOfFirst { it.key == sideTarget }
     val customIndex = customLayouts.indexOfFirst { it.id == merged }
-    PrimaryScrollableTabRow(selectedTabIndex = if (sideIndex >= 0) 3 + customLayouts.size + sideIndex
-        else if (customIndex >= 0) 3 + customIndex else if (fourteen) 2 else if (english) 1 else 0,
+    // 「丹麦语29键」排在「英文26键」后面；精简包没有丹麦语时不出这一页，后面的页序号不加 1。
+    val danishTabs = if (danishAvailable) 1 else 0
+    PrimaryScrollableTabRow(selectedTabIndex = if (sideIndex >= 0) 3 + danishTabs + customLayouts.size + sideIndex
+        else if (customIndex >= 0) 3 + danishTabs + customIndex else if (fourteen) 2 + danishTabs
+        else if (danish) 2 else if (english) 1 else 0,
         edgePadding = 0.dp) {
         Tab(selected = sideTarget == null && !english && merged == null, onClick = { changeTab(false, null) }, enabled = !busy,
             text = { Text("中文26键") })
-        Tab(selected = sideTarget == null && english, onClick = { changeTab(true, null) }, enabled = !busy,
+        Tab(selected = sideTarget == null && english && !danish, onClick = { changeTab(true, null) }, enabled = !busy,
             text = { Text("英文26键") })
+        if (danishAvailable) Tab(selected = sideTarget == null && danish, onClick = { changeTab(true, null, nextDanish = true) },
+            enabled = !busy, text = { Text("丹麦语29键") }, modifier = Modifier.testTag("symbol-target:danish"))
         Tab(selected = sideTarget == null && fourteen, onClick = { changeTab(false, null, FOURTEEN) }, enabled = !busy,
             text = { Text("中文14键") }, modifier = Modifier.testTag("symbol-target:k14"))
         // 自建的双字母布局各有一页，标签用布局自己的名字；没有合并键的自建布局按 26 键位置，在「中文26键」里改。
@@ -195,7 +206,7 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
                 text = { Text(layout.name) }, modifier = Modifier.testTag("symbol-target:${layout.id}"))
         }
         sideTargets.forEach { target ->
-            Tab(selected = sideTarget == target.key, onClick = { changeTab(english, target.key, merged) }, enabled = !busy,
+            Tab(selected = sideTarget == target.key, onClick = { changeTab(english, target.key, merged, danish) }, enabled = !busy,
                 text = { Text(target.label) }, modifier = Modifier.testTag("symbol-target:${target.key}"))
         }
     }
@@ -203,9 +214,11 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
     else {
         Text("点按键修改，${topGesture}输入上方，${bottomGesture}输入下方", style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (danish) Text("A–Z 和「英文26键」共用，这里改了英文键盘也会变；Å Æ Ø 只在丹麦语键盘上。",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         val boardRows = if (fourteen) FourteenKeySymbols.rows
             else customLayout?.let(CustomLayoutSymbols::rows)
-            ?: QwertySwipeSymbols.rows.map { row -> row.map(Char::toString) }
+            ?: (if (danish) QwertySwipeSymbols.danishRows else QwertySwipeSymbols.rows).map { row -> row.map(Char::toString) }
         // 自建布局和键盘上一样按字母数分键宽（合并键两格宽），每排居中；26 键、14 键每键一格。
         // 打开「合并键均匀排布」时同键盘一样，合并键只比单字母键宽三分之一。
         fun width(key: String): Double = com.kingzcheung.xime.ui.keyboard.letterKeySpan(key, customLayout != null,
@@ -246,7 +259,8 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
     }
     editing?.takeIf { side == null && loaded }?.let { key ->
         KeySymbolDialog(key, values["up.$key"].orEmpty(), values["down.$key"].orEmpty(),
-            topGesture, bottomGesture, swipes.takeIf { merged == null },
+            // å æ ø 没有滑动动作（键盘上只给 26 个字母键绑动作），只改符号。
+            topGesture, bottomGesture, swipes.takeIf { merged == null && key !in QwertySwipeSymbols.extraKeys },
             // 长按输入时上方符号靠长按，滑动动作占的是空着的那个方向，不挡符号。
             upperSlot = LetterSwipeBindings.upperDirection(reverseSwipe)
                 .takeUnless { inputSettings.symbolInputMode == SymbolInputMode.LONG_PRESS },
@@ -259,7 +273,7 @@ internal fun QwertySymbolEditor(onBack: () -> Unit, initialTarget: String? = nul
             })
     }
     if (confirmReset) AlertDialog(onDismissRequest = { confirmReset = false },
-        title = { Text("「$tabName」恢复默认？") },
+        title = { Text(if (danish) "「丹麦语29键」和「英文26键」一起恢复默认？" else "「$tabName」恢复默认？") },
         confirmButton = { TextButton(onClick = {
             confirmReset = false
             if (side != null) sideReset?.invoke() else resetLetters()

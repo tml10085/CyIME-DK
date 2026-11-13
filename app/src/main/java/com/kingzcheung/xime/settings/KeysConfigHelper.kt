@@ -1846,7 +1846,8 @@ object KeysConfigHelper {
         val overrides = QwertySwipeSymbols.load(context, english)
         val custom = if (english) symbolCustomEn else symbolCustomZh
         return buildMap {
-            for (key in QwertySwipeSymbols.keys.map(Char::toString)) {
+            val editable = QwertySwipeSymbols.keys.map(Char::toString) + if (english) QwertySwipeSymbols.extraKeys else emptyList()
+            for (key in editable) {
                 val gesture = QwertySwipeSymbols.apply(key, null, overrides, custom[key], english, numberRowCorners)!!
                 put("up.$key", gesture.swipeUp!!.value.ifEmpty { gesture.swipeUp.label })
                 put("down.$key", gesture.swipeDown!!.value.ifEmpty { gesture.swipeDown.label })
