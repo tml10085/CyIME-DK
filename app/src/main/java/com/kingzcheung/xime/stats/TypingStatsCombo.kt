@@ -51,6 +51,6 @@ data class TypingStatsCombo(val id: String, val label: String) {
 
         /** 拉丁字母语言按字母算速度，单位写「字母/分」；其他写「字/分」。 */
         fun speedUnit(id: String): String =
-            if (id.startsWith("kb/en/") || id.startsWith("kb/es/") || id == "hw/en" || id == "hw/es") "字母/分" else "字/分"
+            if (id.startsWith("kb/en/") || id.startsWith("kb/da/") || id.startsWith("kb/es/") || id == "hw/en" || id == "hw/da" || id == "hw/es") "字母/分" else "字/分"
     }
 }

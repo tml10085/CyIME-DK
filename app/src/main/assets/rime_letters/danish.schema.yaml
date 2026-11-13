@@ -1,0 +1,24 @@
+# CyIME 丹麦语：字母像英文一样逐字直接上屏，补全与下一词联想由内置丹麦语词表给出。
+# 这个方案只是语言入口（语言列表、语言键、键盘布局 qwerty_danish 都按方案识别），
+# 不组字、不翻译、不转标点：按键交回应用原样上屏。
+schema:
+  schema_id: danish
+  name: 丹麦语
+  version: "1"
+  author:
+    - Cyletix
+  description: |
+    丹麦语标准 29 键（含 å æ ø）；补全支持省略重音与双字母拼写（aar → år，kobenhavn → København）。
+
+switches:
+  - name: ascii_mode
+    states: [ DA, ABC ]
+    reset: 0
+
+engine:
+  processors:
+    - express_editor
+  segmentors:
+    - fallback_segmentor
+  translators:
+    - echo_translator

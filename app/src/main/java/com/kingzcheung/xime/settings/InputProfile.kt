@@ -2,7 +2,7 @@ package com.kingzcheung.xime.settings
 
 /** Product language, never a keyboard shape or a recognizer. */
 enum class InputLanguage(val id: String, val displayName: String) {
-    CHINESE("zh", "中文"), JAPANESE("ja", "日语"), ENGLISH("en", "英文"), SPANISH("es", "西班牙语"),
+    CHINESE("zh", "中文"), JAPANESE("ja", "日语"), ENGLISH("en", "英文"), DANISH("da", "丹麦语"), SPANISH("es", "西班牙语"),
     GERMAN("de", "德语"), FRENCH("fr", "法语"), ITALIAN("it", "意大利语"), RUSSIAN("ru", "俄语"), KOREAN("ko", "韩语"),
     UNSPECIFIED("und", "未标注语言");
 
@@ -12,7 +12,7 @@ enum class InputLanguage(val id: String, val displayName: String) {
     companion object {
         /** The elder package offers only Chinese and English; see docs/development/elder-pack-spec.md. */
         val supported = if (com.kingzcheung.xime.BuildConfig.ELDER) listOf(CHINESE, ENGLISH)
-            else listOf(CHINESE, JAPANESE, ENGLISH, SPANISH, GERMAN, FRENCH, ITALIAN, RUSSIAN, KOREAN)
+            else listOf(CHINESE, JAPANESE, ENGLISH, DANISH, SPANISH, GERMAN, FRENCH, ITALIAN, RUSSIAN, KOREAN)
         /** Languages a shipped speech recognizer can transcribe. The [LetterLanguage]s have none yet. */
         val speech: List<InputLanguage> get() = supported.filter { LetterLanguage.of(it) == null }
         fun fromId(id: String): InputLanguage? = entries.firstOrNull { it.id == id }
@@ -199,6 +199,7 @@ object InputProfiles {
         "qwerty", "qwerty_japanese", "qwerty_spanish", "qwerty_german", "qwerty_french",
         "qwerty_italian" ->
             InputLayout(section, "26键", LayoutKind.ALPHABETIC)
+        "qwerty_danish" -> InputLayout(section, "29键", LayoutKind.ALPHABETIC)
         // 英文单词方案用英文键盘的键帽和角标，和英文直接输入是同一个 26 键：布局栏里不出两个「26键」。
         "qwerty_en" -> InputLayout.QWERTY
         "jcuken_russian" -> InputLayout(section, "ЙЦУКЕН", LayoutKind.ALPHABETIC)

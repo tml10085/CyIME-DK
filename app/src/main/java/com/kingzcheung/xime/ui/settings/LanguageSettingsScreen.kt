@@ -231,9 +231,9 @@ fun LanguageSettingsContent(onOpenSchemaResources: () -> Unit = {}, onOpenDouble
 
 internal const val MORE_LANGUAGES_ROW = "more-languages"
 
-/** 收进「更多语言」的：没开启的字母类语言（西、德、法、意、俄、韩语）。开着的、中文、日语照常列出。 */
+/** 收进「更多语言」的：没开启的字母类语言（西、德、法、意、俄、韩语；丹麦语像日语一样直接列在顶层）。 */
 internal fun foldedLanguages(rows: List<String>, enabled: Set<InputLanguage>): List<String> =
-    rows.filter { id -> enabled.none { it.id == id } && InputLanguage.fromId(id)?.let { LetterLanguage.of(it) } != null }
+    rows.filter { id -> id != InputLanguage.DANISH.id && enabled.none { it.id == id } && InputLanguage.fromId(id)?.let { LetterLanguage.of(it) } != null }
 
 /** 实际列出的行：收起时只到「更多语言」那一行，展开时它下面接着列这些语言。 */
 internal fun languageListRows(rows: List<String>, enabled: Set<InputLanguage>, moreOpen: Boolean): List<String> {

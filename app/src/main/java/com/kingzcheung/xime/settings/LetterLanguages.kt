@@ -14,9 +14,12 @@ enum class LetterLanguage(
     val keyboard: String,
     /** a–z 之外，这个键盘上点按或长按打出的字母（含大写）。 */
     val extraLetters: String,
-    /** 补全词表在商店里的模型 id；null 表示没有补全（韩语）。 */
+    /** 补全词表在商店里的模型 id；null 表示没有商店下载（韩语无补全，丹麦语随包内置）。 */
     val wordsModel: String?,
+    /** 随包内置的补全词表 assets 文件名；非空时直接从安装包读取，不走商店下载。 */
+    val bundledWordsAsset: String? = null,
 ) {
+    DANISH(InputLanguage.DANISH, "danish", "DA", "qwerty_danish", "åæøéäöüáóúÅÆØÉÄÖÜÁÓÚ", null, "cyime-words-da-v1.txt"),
     SPANISH(InputLanguage.SPANISH, "spanish", "ES", "qwerty_spanish", "áéíóúüñÁÉÍÓÚÜÑ", "words-es"),
     GERMAN(InputLanguage.GERMAN, "german", "DE", "qwerty_german", "äöüßÄÖÜ", "words-de"),
     FRENCH(InputLanguage.FRENCH, "french", "FR", "qwerty_french",
@@ -28,7 +31,7 @@ enum class LetterLanguage(
         "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎㅏㅐㅑㅒㅓㅔㅕㅖㅗㅛㅜㅠㅡㅣ", null);
 
     /** 词表文件名带版本；换新版时改这里和商店目录。 */
-    val wordsFile: String? get() = wordsModel?.let { "cyime-$it-v1.txt" }
+    val wordsFile: String? get() = bundledWordsAsset ?: wordsModel?.let { "cyime-$it-v1.txt" }
 
     companion object {
         /** 所有语言键盘上的非 a–z 字母，键帽随 Shift 改大小写时用。 */

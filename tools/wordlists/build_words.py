@@ -1,4 +1,4 @@
-"""Build a completion word list for a letter-by-letter language (es, de, fr, it, ru).
+"""Build a completion word list for a letter-by-letter language (es, de, fr, it, ru, da).
 
 Frequencies come from FrequencyWords (OpenSubtitles 2018, pinned commit). Subtitles carry names,
 English and typos, so only words the LibreOffice spelling dictionary accepts are kept;
@@ -27,6 +27,7 @@ LETTERS = {
     "fr": "a-zàâæçéèêëîïôœùûüÿ",
     "it": "a-zàèéìíîòóùú",
     "ru": "а-яё",
+    "da": "a-zåæøéäöüáóú",
 }
 # Single letters that are words; the rest are subtitle noise.
 SINGLE = {
@@ -35,6 +36,7 @@ SINGLE = {
     "fr": {"a", "à", "y"},
     "it": {"a", "e", "è", "i", "o"},
     "ru": {"и", "в", "с", "к", "у", "о", "а", "я"},
+    "da": {"i", "å", "ø"},
 }
 
 

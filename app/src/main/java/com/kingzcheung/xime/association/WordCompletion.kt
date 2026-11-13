@@ -32,18 +32,24 @@ internal class WordLexicon(private val words: List<String>) {
      */
     fun complete(typed: String, limit: Int): List<String> {
         if (typed.isEmpty() || limit <= 0) return emptyList()
-        val prefix = fold(typed)
         val lower = typed.lowercase()
         val exact = mutableListOf<Int>()
         val longer = mutableListOf<Int>()
-        var position = lowerBound(prefix)
-        while (position < keys.size && keys[position].startsWith(prefix)) {
-            val index = byKey[position]
-            if (keepsTypedAccents(lower, words[index].lowercase())) {
-                if (keys[position].length == prefix.length) exact += index else longer += index
+        fun collect(queryLower: String) {
+            val prefix = fold(queryLower)
+            var position = lowerBound(prefix)
+            while (position < keys.size && keys[position].startsWith(prefix)) {
+                val index = byKey[position]
+                if (keepsTypedAccents(queryLower, words[index].lowercase())) {
+                    if (keys[position].length == prefix.length) exact += index else longer += index
+                }
+                position++
             }
-            position++
         }
+        collect(lower)
+        // 丹麦语/北欧双字母拼写：aa 可匹配 å（aar → år），oe 可匹配 ø（koebenhavn → København）。
+        val digraphLower = lower.replace("aa", "å").replace("oe", "ø")
+        if (digraphLower != lower) collect(digraphLower)
         exact.sort()
         longer.sort()
         return (exact + longer).asSequence().map { cased(words[it], typed) }
@@ -63,7 +69,7 @@ internal class WordLexicon(private val words: List<String>) {
     companion object {
         private fun foldChar(char: Char): String = when (char) {
             'á', 'à', 'â', 'ä', 'ã', 'å' -> "a"; 'é', 'è', 'ê', 'ë' -> "e"; 'í', 'ì', 'î', 'ï' -> "i"
-            'ó', 'ò', 'ô', 'ö', 'õ' -> "o"; 'ú', 'ù', 'û', 'ü' -> "u"; 'ñ' -> "n"; 'ç' -> "c"; 'ÿ' -> "y"
+            'ó', 'ò', 'ô', 'ö', 'õ', 'ø' -> "o"; 'ú', 'ù', 'û', 'ü' -> "u"; 'ñ' -> "n"; 'ç' -> "c"; 'ÿ' -> "y"
             'ß' -> "ss"; 'œ' -> "oe"; 'æ' -> "ae"; 'ё' -> "е"
             else -> char.toString()
         }
@@ -114,10 +120,15 @@ internal object WordCompletion {
         return File(com.kingzcheung.xime.model.ModelStorage.getModelDir(context, model), language.wordsFile!!)
     }
 
-    fun isInstalled(context: Context, language: LetterLanguage): Boolean =
-        file(context, language)?.let { it.isFile && it.length() > 0 } ?: true
+    private fun hasBundledAsset(context: Context, fileName: String): Boolean =
+        runCatching { context.assets.open(fileName).use { true } }.getOrDefault(false)
 
-    /** 在后台下载词表；已在下载或已装好时什么都不做。 */
+    fun isInstalled(context: Context, language: LetterLanguage): Boolean = when {
+        language.bundledWordsAsset != null -> hasBundledAsset(context, language.bundledWordsAsset)
+        else -> file(context, language)?.let { (it.isFile && it.length() > 0) || hasBundledAsset(context, it.name) } ?: true
+    }
+
+    /** 在后台下载词表；已在下载、随包内置或已装好时什么都不做。 */
     fun download(context: Context, language: LetterLanguage) {
         if (isInstalled(context, language)) return
         val model = com.kingzcheung.xime.model.ModelManager.getModel(language.wordsModel ?: return) ?: return
@@ -125,16 +136,20 @@ internal object WordCompletion {
     }
 
     suspend fun complete(context: Context, language: LetterLanguage, typed: String, limit: Int): List<String> {
-        val source = file(context, language) ?: return emptyList()
-        if (!source.isFile) {
+        val bundled = language.bundledWordsAsset
+        val source = if (bundled == null) file(context, language) ?: return emptyList() else null
+        val useAsset = bundled != null || (source != null && !source.isFile && hasBundledAsset(context, source.name))
+        if (!useAsset && (source == null || !source.isFile)) {
             if (downloadRequested.add(language)) download(context, language)
             return emptyList()
         }
-        val signature = "${source.length()}:${source.lastModified()}"
+        val assetName = bundled ?: source!!.name
+        val signature = if (useAsset) "asset:$assetName" else "${source!!.length()}:${source.lastModified()}"
         val loaded = lexicons[language]?.takeIf { it.first == signature }?.second ?: loading.withLock {
             lexicons[language]?.takeIf { it.first == signature }?.second ?: withContext(Dispatchers.IO) {
                 runCatching {
-                    WordLexicon(source.bufferedReader().useLines { lines ->
+                    val reader = if (useAsset) context.assets.open(assetName).bufferedReader() else source!!.bufferedReader()
+                    WordLexicon(reader.useLines { lines ->
                         lines.map { it.trim() }.filter { it.isNotEmpty() }.toList()
                     })
                 }.onFailure { Log.e(TAG, "${language.name} word list could not load", it) }.getOrNull()

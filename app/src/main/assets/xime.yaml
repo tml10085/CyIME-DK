@@ -463,6 +463,52 @@ keyboard:
       "'": { tap: { label: "、", value: "," }, swipe_up: { label: "。", value: "." } }
       earth: { tap: { label: "@language", action: "toggle_ascii" } }
 
+  # 丹麦语：标准 29 键（11 + 11 + 7），第一排末尾是 å，第二排末尾是 æ ø。
+  # 字母逐字上屏，补全与下一词联想由内置词表给出；长按元音可输入重音变体。
+  qwerty_danish:
+    schemas: [danish]
+    button_layout: standard
+    layout:
+      rows:
+        - [q, w, e, r, t, y, u, i, o, p, "å"]
+        - [a, s, d, f, g, h, j, k, l, "æ", "ø"]
+        - [z, x, c, v, b, n, m]
+      geometry:
+        shift_key: { weight: 1.8 }
+        delete_key_weight: 1.8
+    keys:
+      q: { tap: { label: "q", value: "q" } }
+      w: { tap: { label: "w", value: "w" } }
+      e: { tap: { label: "e", value: "e" }, long_press: { display: "bubble", values: ["é"] } }
+      r: { tap: { label: "r", value: "r" } }
+      t: { tap: { label: "t", value: "t" } }
+      y: { tap: { label: "y", value: "y" } }
+      u: { tap: { label: "u", value: "u" }, long_press: { display: "bubble", values: ["ü", "ú"] } }
+      i: { tap: { label: "i", value: "i" } }
+      o: { tap: { label: "o", value: "o" }, long_press: { display: "bubble", values: ["ø", "ö", "ó"] } }
+      p: { tap: { label: "p", value: "p" } }
+      "å": { tap: { label: "å", value: "å" } }
+      a: { tap: { label: "a", value: "a" }, long_press: { display: "bubble", values: ["å", "ä", "á"] } }
+      s: { tap: { label: "s", value: "s" } }
+      d: { tap: { label: "d", value: "d" } }
+      f: { tap: { label: "f", value: "f" } }
+      g: { tap: { label: "g", value: "g" } }
+      h: { tap: { label: "h", value: "h" } }
+      j: { tap: { label: "j", value: "j" } }
+      k: { tap: { label: "k", value: "k" } }
+      l: { tap: { label: "l", value: "l" } }
+      "æ": { tap: { label: "æ", value: "æ" } }
+      "ø": { tap: { label: "ø", value: "ø" } }
+      z: { tap: { label: "z", value: "z" } }
+      x: { tap: { label: "x", value: "x" } }
+      c: { tap: { label: "c", value: "c" } }
+      v: { tap: { label: "v", value: "v" } }
+      b: { tap: { label: "b", value: "b" } }
+      n: { tap: { label: "n", value: "n" } }
+      m: { tap: { label: "m", value: "m" } }
+      "'": { tap: { label: ",", value: "," }, swipe_up: { label: ".", value: "." }, long_press: { display: "bubble", values: [",", ".", "'", "«", "»", "?", "!"] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+
   # 西班牙语：字母逐字上屏，补全不用打重音；第二排末尾是 ñ。长按元音出重音字母、长按 n 出 ñ
   # （不受「长按弹出字母气泡」开关影响）。字母键的上下角标和英文键盘同一规则（QwertySwipeSymbols），这里不配；
   # ¿ ¡ 在逗号键长按里。

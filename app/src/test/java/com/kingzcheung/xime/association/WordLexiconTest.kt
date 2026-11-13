@@ -83,4 +83,16 @@ class WordLexiconTest {
         assertTrue("привет" in russian.complete("прив", 10))
         assertTrue("Привет" in russian.complete("Прив", 10))
     }
+
+    @Test fun `danish å æ ø and digraphs aa ae oe match and proper nouns stay capitalized`() {
+        val danish = words("da")
+        assertTrue("år" in danish.complete("aar", 5))
+        assertTrue("år" in danish.complete("ar", 5))
+        assertEquals("være", danish.complete("vaere", 5).first())
+        assertEquals("København", danish.complete("kobenhavn", 5).first())
+        assertEquals("København", danish.complete("koebenhavn", 5).first())
+        assertEquals("Danmark", danish.complete("danmark", 5).first())
+        assertTrue("spørgsmål" in danish.complete("sporgsmal", 5))
+        assertTrue("spørgsmål" in danish.complete("spoergsmaal", 5))
+    }
 }

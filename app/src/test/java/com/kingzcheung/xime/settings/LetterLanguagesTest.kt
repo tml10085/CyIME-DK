@@ -86,6 +86,9 @@ class LetterLanguagesTest {
             assertTrue(file.name, file.mirrors.any { it.startsWith(com.kingzcheung.xime.model.DownloadMirrors.CYIME_MODELSCOPE) })
         }
         assertNull(LetterLanguage.KOREAN.wordsModel)
+        assertNull(LetterLanguage.DANISH.wordsModel)
+        val daBundled = requireNotNull(LetterLanguage.DANISH.bundledWordsAsset)
+        assertEquals(repoFile("../tools/wordlists/$daBundled").readText(), repoFile("src/main/assets/$daBundled").readText())
     }
 
     private fun <T> assertNotNullAndGet(value: T?, message: String): T { assertNotNull(message, value); return value!! }
@@ -93,6 +96,8 @@ class LetterLanguagesTest {
     @Test fun `keyboards carry their letters and long presses`() {
         val bindings = KeysConfigHelper.parseSchemaBindingsYamlText(yaml)
         for (letters in LetterLanguage.entries) assertEquals(letters.keyboard, bindings[letters.schemaId])
+        val danish = requireNotNull(KeysConfigHelper.parseKeyboardLayoutYamlText(yaml, "qwerty_danish"))
+        assertEquals(listOf("qwertyuiopå", "asdfghjklæø", "zxcvbnm"), danish.map { it.joinToString("") })
         val spanish = requireNotNull(KeysConfigHelper.parseKeyboardLayoutYamlText(yaml, "qwerty_spanish"))
         assertEquals(listOf("a", "s", "d", "f", "g", "h", "j", "k", "l", "ñ"), spanish[1])
         val russian = requireNotNull(KeysConfigHelper.parseKeyboardLayoutYamlText(yaml, "jcuken_russian"))
@@ -100,6 +105,7 @@ class LetterLanguagesTest {
         val korean = requireNotNull(KeysConfigHelper.parseKeyboardLayoutYamlText(yaml, "dubeolsik_korean"))
         assertEquals(listOf("ㅂㅈㄷㄱㅅㅛㅕㅑㅐㅔ", "ㅁㄴㅇㄹㅎㅗㅓㅏㅣ", "ㅋㅌㅊㅍㅠㅜㅡ"), korean.map { it.joinToString("") })
         val expected = mapOf(
+            "qwerty_danish" to mapOf("a" to "å", "e" to "é", "o" to "ø", "u" to "ü"),
             "qwerty_spanish" to mapOf("a" to "á", "e" to "é", "i" to "í", "o" to "ó", "u" to "ú", "n" to "ñ"),
             "qwerty_german" to mapOf("a" to "ä", "o" to "ö", "u" to "ü", "s" to "ß"),
             "qwerty_french" to mapOf("e" to "é", "a" to "à", "c" to "ç", "o" to "ô", "u" to "ù", "i" to "î"),
@@ -137,7 +143,7 @@ class LetterLanguagesTest {
 
     @Test fun `latin letters carry the english corner symbols and always offer accents`() {
         loadKeyboards()
-        for (letters in listOf(LetterLanguage.SPANISH, LetterLanguage.GERMAN, LetterLanguage.FRENCH, LetterLanguage.ITALIAN)) {
+        for (letters in listOf(LetterLanguage.DANISH, LetterLanguage.SPANISH, LetterLanguage.GERMAN, LetterLanguage.FRENCH, LetterLanguage.ITALIAN)) {
             KeysConfigHelper.setActiveKeyboardSchema(letters.schemaId)
             for (key in QwertySwipeSymbols.keys.map(Char::toString)) {
                 val gesture = KeysConfigHelper.getKeyGesture(key, false)

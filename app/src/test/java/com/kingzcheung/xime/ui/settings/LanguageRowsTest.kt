@@ -20,7 +20,7 @@ class LanguageRowsTest {
 
     @Test
     fun everyLanguageTurnedOffOneByOneStaysUnique() {
-        val order = listOf("zh", "ja", "en", "es", "de", "fr", "it", "ru", "ko").filter { it in all }
+        val order = listOf("zh", "ja", "en", "da", "es", "de", "fr", "it", "ru", "ko").filter { it in all }
         order.filter { it != "en" }.forEach { off ->
             val enabled = InputLanguage.supported.filter { it.id != off }.toSet()
             val rows = languageRows(order, enabled)

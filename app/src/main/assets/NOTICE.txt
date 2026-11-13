@@ -110,6 +110,24 @@ most frequent first). They are optional market downloads, not part of the APK, b
   https://github.com/wooorm/dictionaries
 
 ================================================================================
+Danish word list and next-word bigram statistics (bundled)
+================================================================================
+
+cyime-words-da-v1.txt and danish_bigrams.txt are bundled in the APK for offline Danish completion
+and next-word prediction, built by tools/wordlists/build_words.py and
+tools/wordlists/build_danish_bigrams.py:
+- Word frequencies: Hermit Dave, FrequencyWords (content/2018/da/da_50k.txt, OpenSubtitles 2018),
+  commit 525f9b560de45753a5ea01069454e72e9aa541c6, Code MIT; word lists CC-BY-SA-4.0:
+  https://github.com/hermitdave/FrequencyWords
+- Spelling filter & inflections (not shipped): Stavekontrolden / Danish Hunspell dictionary
+  (dictionaries/da, GPL-2.0 / LGPL-2.1 / MPL-1.1):
+  https://github.com/wooorm/dictionaries
+- Bigram counts: Universal Dependencies Danish Dependency Treebank (UD_Danish-DDT,
+  da_ddt-ud-{train,dev,test}.conllu), commit 24b7f825b3d85d18c713c4f67121134b2cb369e4,
+  CC-BY-SA-4.0:
+  https://github.com/UniversalDependencies/UD_Danish-DDT
+
+================================================================================
 Handwriting candidate readings
 ================================================================================
 
