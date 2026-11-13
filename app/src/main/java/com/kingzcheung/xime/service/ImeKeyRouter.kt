@@ -1575,7 +1575,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                                 needsUIUpdate = true
                             }
                         }
-                    } else if (!state.isAsciiMode && !state.inputProfile.typesLettersDirectly &&
+                    } else if (!showsLetterNextWords(state) &&
                         hardwareEvent == null && SettingsPreferences.isSpaceCommitAssociationEnabled(service) &&
                         candState.associationCandidates.isNotEmpty() && !candState.isDeletionRecovery &&
                         // 打数字给的短语只能点选：数字后面按空格还是空格。
@@ -1595,7 +1595,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                             service.commitText(association)
                         }
                     } else {
-                        val keepLetterNextWords = (state.isAsciiMode || state.inputProfile.typesLettersDirectly) &&
+                        val keepLetterNextWords = showsLetterNextWords(state) &&
                             candState.pendingEnglishText.isEmpty() && candState.associationCandidates.isNotEmpty() &&
                             !candState.isDigitPhraseList && !EmailSuffixes.isSuggestionList(candState.associationCandidates)
                         withEditor {
@@ -2235,8 +2235,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
             service.predictionManager.clearLetterWordContext()
             return
         }
-        val state = service.uiState.value
-        if (!state.isAsciiMode && !state.inputProfile.typesLettersDirectly) {
+        if (!showsLetterNextWords(service.uiState.value)) {
             service.predictionManager.clearLetterWordContext()
             return
         }
@@ -2253,10 +2252,14 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         }
     }
 
+    /** 给下一词联想的状态：英文直接输入、丹麦语等字母语言，以及英文单词方案（选词上屏之后）。 */
+    private fun showsLetterNextWords(ui: InputUIState): Boolean =
+        ui.isAsciiMode || ui.inputProfile.typesLettersDirectly || typesEnglishWords(ui.inputProfile, ui.isAsciiMode)
+
     private fun showLetterNextWords(nextWords: List<String>) {
         val current = service.candidateState.value
         if (nextWords.isEmpty() || current.pendingEnglishText.isNotEmpty() || current.isComposing ||
-            !service.uiState.value.let { it.isAsciiMode || it.inputProfile.typesLettersDirectly }) return
+            !showsLetterNextWords(service.uiState.value)) return
         keepLetterNextWordContext()
         service.candidateState.value = current.copy(associationCandidates = nextWords)
     }
@@ -2278,9 +2281,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         englishAutoSpace.disarm()
         // 邮箱后缀：上屏后不补空格，也不接着联想。
         val emailSuffix = EmailSuffixes.isSuggestionList(state.associationCandidates)
-        val isLetterMode = service.uiState.value.let {
-            (it.isAsciiMode || it.inputProfile.typesLettersDirectly) && !it.inputTarget.isInternal
-        }
+        val isLetterMode = service.uiState.value.let { showsLetterNextWords(it) && !it.inputTarget.isInternal }
         // 英文/字母语言选词后自动加空格（默认关）：只跟在英文/字母语言候选词后面，中文联想、邮箱后缀不加。
         val autoSpace = !emailSuffix && isLetterMode &&
             SettingsPreferences.getPrefsPublic(service).getBoolean(EnglishAutoSpace.PREF_KEY, false)
@@ -2846,6 +2847,12 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     service.uiState.value = service.uiState.value.copy(
                         t9RightCandidateSelectedCount = 0, t9SelectedCandidatePinyin = ""
                     )
+                }
+                // 英文单词方案选词上屏后，和英文直接输入按空格结束一个词一样给下一词联想。
+                val ui = service.uiState.value
+                if (!it.t9 && !it.isPrivate && typesEnglishWords(ui.inputProfile, ui.isAsciiMode) &&
+                    !SettingsPreferences.isSingleAssociationMode(service)) {
+                    triggerLetterNextWordAssociations(it.text)
                 }
             },
         )
