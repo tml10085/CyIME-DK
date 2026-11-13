@@ -1601,6 +1601,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                         withEditor {
                             service.commitText(service.textCommit.keyboardLiteral(" "))
                             if (keepLetterNextWords) {
+                                keepLetterNextWordContext()
                                 service.candidateState.value = service.candidateState.value.copy(
                                     associationCandidates = candState.associationCandidates
                                 )
@@ -2248,22 +2249,22 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         val context = owner?.context() ?: kotlin.coroutines.EmptyCoroutineContext
         service.serviceScope.launch(context) {
             val nextWords = service.predictionManager.getNextWordAssociations(cleaned)
-            if (owner != null) {
-                withEditor {
-                    val current = service.candidateState.value
-                    if (current.pendingEnglishText.isEmpty() && !current.isComposing &&
-                        service.uiState.value.let { it.isAsciiMode || it.inputProfile.typesLettersDirectly }) {
-                        service.candidateState.value = current.copy(associationCandidates = nextWords)
-                    }
-                }
-            } else {
-                val current = service.candidateState.value
-                if (current.pendingEnglishText.isEmpty() && !current.isComposing &&
-                    service.uiState.value.let { it.isAsciiMode || it.inputProfile.typesLettersDirectly }) {
-                    service.candidateState.value = current.copy(associationCandidates = nextWords)
-                }
-            }
+            if (owner != null) withEditor { showLetterNextWords(nextWords) } else showLetterNextWords(nextWords)
         }
+    }
+
+    private fun showLetterNextWords(nextWords: List<String>) {
+        val current = service.candidateState.value
+        if (nextWords.isEmpty() || current.pendingEnglishText.isNotEmpty() || current.isComposing ||
+            !service.uiState.value.let { it.isAsciiMode || it.inputProfile.typesLettersDirectly }) return
+        keepLetterNextWordContext()
+        service.candidateState.value = current.copy(associationCandidates = nextWords)
+    }
+
+    /** 联想上下文对上光标前的文字：光标更新时才不会当成上下文变了，把下一词联想清掉（同邮箱后缀）。 */
+    private fun keepLetterNextWordContext() {
+        runCatching { service.currentInputConnection?.getTextBeforeCursor(25, 0)?.toString() }.getOrNull()
+            ?.let(service.predictionManager::replaceCommittedText)
     }
 
     /** Main-thread commit shared by touch and physical keys; rejection retains the selection. */
