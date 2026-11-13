@@ -1445,6 +1445,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     needsUIUpdate = true
                 }
                 "enter" -> {
+                    service.predictionManager.clearLetterWordContext()
                     service.calculatorEngine.clear()
                     val japaneseResult = service.rimeEngine.processJapaneseEnterIfComposing()
                     if (japaneseResult != null) {
@@ -1526,14 +1527,16 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     val pendingEnglish = candState.pendingEnglishText
 
                     if (pendingEnglish.isNotEmpty()) {
-                        // 直接上屏模式：词已逐字落盘，此处只提交空格并结束本轮英文输入。
+                        // 直接上屏模式：词已逐字落盘，此处只提交空格并结束本轮英文输入，随后给出下一词联想。
                         withEditor {
                             service.commitText(" ")
                             service.candidateState.value = service.candidateState.value.copy(
                                 pendingEnglishText = "",
+                                glidedWord = "",
                                 associationCandidates = emptyList()
                             )
                         }
+                        triggerLetterNextWordAssociations(pendingEnglish)
                     } else if (candState.isComposing) {
                         if (candState.candidates.isNotEmpty()) {
                             val index = candState.spaceCandidateIndex(state.inputProfile)
@@ -1572,7 +1575,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                                 needsUIUpdate = true
                             }
                         }
-                    } else if (!state.isAsciiMode &&
+                    } else if (!state.isAsciiMode && !state.inputProfile.typesLettersDirectly &&
                         hardwareEvent == null && SettingsPreferences.isSpaceCommitAssociationEnabled(service) &&
                         candState.associationCandidates.isNotEmpty() && !candState.isDeletionRecovery &&
                         // 打数字给的短语只能点选：数字后面按空格还是空格。
@@ -1592,8 +1595,16 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                             service.commitText(association)
                         }
                     } else {
+                        val keepLetterNextWords = (state.isAsciiMode || state.inputProfile.typesLettersDirectly) &&
+                            candState.pendingEnglishText.isEmpty() && candState.associationCandidates.isNotEmpty() &&
+                            !candState.isDigitPhraseList && !EmailSuffixes.isSuggestionList(candState.associationCandidates)
                         withEditor {
                             service.commitText(service.textCommit.keyboardLiteral(" "))
+                            if (keepLetterNextWords) {
+                                service.candidateState.value = service.candidateState.value.copy(
+                                    associationCandidates = candState.associationCandidates
+                                )
+                            }
                         }
                     }
                 }
@@ -1614,6 +1625,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                 "mode_change" -> {
                 }
                 "ime_switch" -> {
+                    service.predictionManager.clearLetterWordContext()
                     // Preserve the existing immediate ASCII preview for the default behavior.
                     // A configured cycle/pair may select another native language and cannot invert ASCII.
                     val switchOptions = com.kingzcheung.xime.settings.LanguageSwitchPreferences.forRequest(
@@ -1657,6 +1669,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     // Number/CommonSymbol 内部切换由 KeyboardView 的 key handler 处理
                 }
                 "emoji" -> {
+                    service.predictionManager.clearLetterWordContext()
                     withEditor {
                         service.commitText("😊")
                     }
@@ -1672,6 +1685,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                         calculatorEngine = service.calculatorEngine,
                     )
                     if (routeResult is com.kingzcheung.xime.calculator.CalculatorRouteResult.Handled) {
+                        service.predictionManager.clearLetterWordContext()
                         // 给着邮箱后缀时接着打的数字、点、减号是后缀的一部分（数字键盘以前不给后缀：@ 走这里直接上屏）。
                         // 这时候选栏已经在上面清掉了，按按键前记下的算。
                         val emailDomain = emailSuffixesShown
@@ -1731,7 +1745,8 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     // 英文模式（isAsciiMode）下非字母键（QWERTY 上滑的数字/符号、数字/符号面板）
                     // 直接上屏，不进入 Rime 引擎与 pendingEnglish 累积（上滑字符即输即上）。
                     if ((state.isAsciiMode || pendingEnglish.isNotEmpty()) && !key.matches(Regex("[a-zA-Z]"))) {
-                        val finalKey = key
+                        service.predictionManager.clearLetterWordContext()
+                        val finalKey = if (isShifted && key.length == 1 && key[0].isLetter()) key.uppercase() else key
                         withEditor {
                             // 直接上屏模式：pendingEnglish 对应字符已逐字落盘，只提交增量键值。
                             service.commitText(finalKey)
@@ -2213,6 +2228,44 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         return true
     }
 
+    private fun triggerLetterNextWordAssociations(completedWord: String) {
+        val cleaned = completedWord.trim()
+        if (cleaned.isEmpty() || service.isSecretEditor() || usesDirectFieldInput) {
+            service.predictionManager.clearLetterWordContext()
+            return
+        }
+        val state = service.uiState.value
+        if (!state.isAsciiMode && !state.inputProfile.typesLettersDirectly) {
+            service.predictionManager.clearLetterWordContext()
+            return
+        }
+        val previous = service.predictionManager.lastCompletedLetterWord
+        if (previous.isNotEmpty()) {
+            service.predictionManager.recordLetterWordPair(previous, cleaned)
+        }
+        service.predictionManager.lastCompletedLetterWord = cleaned
+        val owner = runCatching { InputCommandOwner.requireOwner() }.getOrNull()
+        val context = owner?.context() ?: kotlin.coroutines.EmptyCoroutineContext
+        service.serviceScope.launch(context) {
+            val nextWords = service.predictionManager.getNextWordAssociations(cleaned)
+            if (owner != null) {
+                withEditor {
+                    val current = service.candidateState.value
+                    if (current.pendingEnglishText.isEmpty() && !current.isComposing &&
+                        service.uiState.value.let { it.isAsciiMode || it.inputProfile.typesLettersDirectly }) {
+                        service.candidateState.value = current.copy(associationCandidates = nextWords)
+                    }
+                }
+            } else {
+                val current = service.candidateState.value
+                if (current.pendingEnglishText.isEmpty() && !current.isComposing &&
+                    service.uiState.value.let { it.isAsciiMode || it.inputProfile.typesLettersDirectly }) {
+                    service.candidateState.value = current.copy(associationCandidates = nextWords)
+                }
+            }
+        }
+    }
+
     /** Main-thread commit shared by touch and physical keys; rejection retains the selection. */
     internal fun selectAssociation(index: Int): Boolean {
         if (usesDirectFieldInput) return selectDirectFieldEmailSuffix(index)
@@ -2224,27 +2277,38 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         englishAutoSpace.disarm()
         // 邮箱后缀：上屏后不补空格，也不接着联想。
         val emailSuffix = EmailSuffixes.isSuggestionList(state.associationCandidates)
-        // 英文选词后自动加空格（默认关）：只跟在英文补全词后面，中文联想、邮箱后缀不加。
-        val autoSpace = state.pendingEnglishText.isNotEmpty() && !emailSuffix &&
-            service.uiState.value.let { (it.isAsciiMode || it.inputProfile.typesLettersDirectly) && !it.inputTarget.isInternal } &&
+        val isLetterMode = service.uiState.value.let {
+            (it.isAsciiMode || it.inputProfile.typesLettersDirectly) && !it.inputTarget.isInternal
+        }
+        // 英文/字母语言选词后自动加空格（默认关）：只跟在英文/字母语言候选词后面，中文联想、邮箱后缀不加。
+        val autoSpace = !emailSuffix && isLetterMode &&
             SettingsPreferences.getPrefsPublic(service).getBoolean(EnglishAutoSpace.PREF_KEY, false)
+        val pickedWord = associationWordAt(state, index)
         val accepted = commitAssociationSelection(state, index,
             commit = { text ->
-                service.commitTextAndPredict(text, isPaste = false,
+                val before = if (isLetterMode && !emailSuffix && state.pendingEnglishText.isEmpty()) {
+                    runCatching { service.currentInputConnection?.getTextBeforeCursor(1, 0)?.firstOrNull() }.getOrNull()
+                } else null
+                val prefixSpace = if (before != null && before.isLetterOrDigit()) " " else ""
+                val trailingSpace = if (isLetterMode && !emailSuffix && state.pendingEnglishText.isEmpty() && autoSpace) " " else ""
+                service.commitTextAndPredict(prefixSpace + text + trailingSpace, isPaste = false,
                     allowPrediction = !emailSuffix && !SettingsPreferences.isSingleAssociationMode(service)).accepted
             },
             replace = { prefix, completion ->
                 if (service.uiState.value.inputTarget.isInternal) service.replaceBeforeCursor(prefix, completion)
                 else service.currentInputConnection?.commitEnglishCompletion(prefix, completion) == true
             },
-            suffix = if (autoSpace) " " else "")
+            suffix = if (state.pendingEnglishText.isNotEmpty() && autoSpace) " " else "")
         if (!accepted) return false
-        associationWordAt(state, index)?.let(com.kingzcheung.xime.stats.TypingStats::onAssociationPicked)
-        if (autoSpace) associationWordAt(state, index)?.let(englishAutoSpace::arm)
+        pickedWord?.let(com.kingzcheung.xime.stats.TypingStats::onAssociationPicked)
+        if (autoSpace) pickedWord?.let(englishAutoSpace::arm)
         service.candidateState.value = service.candidateState.value.copy(
-            pendingEnglishText = "", associationCandidates = emptyList())
+            pendingEnglishText = "", glidedWord = "", associationCandidates = emptyList())
         hardwareNavigation.clear()
         publishHardwareCandidateSelection()
+        if (!emailSuffix && pickedWord != null && isLetterMode && !SettingsPreferences.isSingleAssociationMode(service)) {
+            triggerLetterNextWordAssociations(pickedWord)
+        }
         return true
     }
 
@@ -2397,6 +2461,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         val layoutState = service.keyboardViewModel.keyboardState.value
         if ((layoutState is KeyboardLayoutState.Number || layoutState is KeyboardLayoutState.Symbol) &&
             target == DeletionTarget.DOCUMENT) {
+            service.predictionManager.clearLetterWordContext()
             withEditor {
                 if (owner != service.uiState.value.inputSessionId) return@withEditor
                 val digitsBefore = if (candState.isDigitPhraseList) digitPhraseContext() else null
@@ -2436,6 +2501,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                         }
                     }
                 } else {
+                    service.predictionManager.clearLetterWordContext()
                     withEditor {
                         if (owner != service.uiState.value.inputSessionId) return@withEditor
                         service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
@@ -2502,6 +2568,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
 
             // 4. 无候选也无编码：直接回删已上屏文本
             else -> {
+                service.predictionManager.clearLetterWordContext()
                 service.predictionManager.deleteLastChar()
 
                 var deletedBefore: Pair<String, String>? = null
@@ -2825,6 +2892,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
      */
     private suspend fun clearInputStateForKeys(keepInlineText: Boolean = false) {
         service.predictionManager.invalidatePendingPredictions()
+        service.predictionManager.clearLetterWordContext()
         service.calculatorEngine.clear()
         updateCalculatorCandidates()
         service.t9PartialSegments.clear()

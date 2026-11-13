@@ -5470,6 +5470,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
 
     internal fun dismissPredictionsForPaste() {
         predictionManager.invalidatePendingPredictions()
+        predictionManager.clearLetterWordContext()
         candidateState.value = candidateState.value.copy(
             associationCandidates = emptyList(), pendingEnglishText = "",
         )

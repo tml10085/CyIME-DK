@@ -49,6 +49,16 @@ class PredictionManager(
     private var _lastCommittedText = ""
     val lastCommittedText: String get() = _lastCommittedText
 
+    @Volatile
+    private var _lastCompletedLetterWord = ""
+    var lastCompletedLetterWord: String
+        get() = _lastCompletedLetterWord
+        set(value) { _lastCompletedLetterWord = value }
+
+    fun clearLetterWordContext() {
+        _lastCompletedLetterWord = ""
+    }
+
     /**
      * 预测请求代际号：退格/清空等改变上下文的操作调用 [invalidatePendingPredictions]，
      * 使所有在途的异步预测结果失效。否则长按退格删除时，旧的联想结果会迟到并反复
@@ -125,6 +135,7 @@ class PredictionManager(
 
     fun clearCommittedText() {
         _lastCommittedText = ""
+        clearLetterWordContext()
     }
     
     fun deleteLastChar() {
@@ -215,6 +226,39 @@ class PredictionManager(
         } catch (e: Exception) {
             Log.e(TAG, "English association failed", e)
             emptyList()
+        }
+    }
+
+    suspend fun getNextWordAssociations(previousWord: String, limit: Int = MAX_ASSOCIATION_COUNT): List<String> {
+        return try {
+            if (!runCatching { SettingsPreferences.isSmartPredictionEnabled(context) }.getOrDefault(true)) return emptyList()
+            val lang = completionLanguage()
+            val letters = com.kingzcheung.xime.settings.LetterLanguage.of(lang)
+            com.kingzcheung.xime.association.WordBigramPredictor.predictNextWords(
+                context = context,
+                previousWord = previousWord,
+                isAsciiMode = letters == null,
+                letterLanguage = letters,
+                limit = limit,
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Next-word association failed", e)
+            emptyList()
+        }
+    }
+
+    fun recordLetterWordPair(previousWord: String, nextWord: String) {
+        if (com.kingzcheung.xime.settings.IncognitoState.active) return
+        if (!runCatching { SettingsPreferences.isSmartPredictionEnabled(context) }.getOrDefault(true)) return
+        val lang = completionLanguage()
+        val letters = com.kingzcheung.xime.settings.LetterLanguage.of(lang)
+        if (letters == null || letters == com.kingzcheung.xime.settings.LetterLanguage.DANISH) {
+            com.kingzcheung.xime.association.WordBigramPredictor.recordWordPair(
+                previousWord = previousWord,
+                nextWord = nextWord,
+                isDanish = letters == com.kingzcheung.xime.settings.LetterLanguage.DANISH,
+                context = context,
+            )
         }
     }
     
