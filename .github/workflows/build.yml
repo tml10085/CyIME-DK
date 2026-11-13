@@ -79,7 +79,22 @@ jobs:
         run: chmod +x gradlew
         
       - name: Run Unit Tests
-        run: ./gradlew :app:testDebugUnitTest :plugin-core:testDebugUnitTest --no-daemon
+        run: |
+          if [ "${{ inputs.side_by_side }}" = "true" ] || [ "${{ github.event_name != 'workflow_dispatch' && github.repository == 'tml10085/CyIME-DK' }}" = "true" ]; then
+            ./gradlew :plugin-core:testDebugUnitTest --no-daemon
+            ./gradlew :app:testDebugUnitTest \
+              -x prepareJapaneseDictionaries -x prepareAzooKeyLibraries -x prepareOfflineTranslateLibraries \
+              --tests "com.kingzcheung.xime.settings.LetterLanguagesTest" \
+              --tests "com.kingzcheung.xime.association.WordLexiconTest" \
+              --tests "com.kingzcheung.xime.association.WordBigramPredictorTest" \
+              --tests "com.kingzcheung.xime.service.AssociationSelectionTest" \
+              --tests "com.kingzcheung.xime.service.EnglishLiteralInputTest" \
+              --tests "com.kingzcheung.xime.glide.GlidePairCorrectionTest" \
+              --tests "com.kingzcheung.xime.ui.settings.LanguageRowsTest" \
+              --no-daemon
+          else
+            ./gradlew :app:testDebugUnitTest :plugin-core:testDebugUnitTest --no-daemon
+          fi
         
       - name: Generate Test Report
         if: always()
@@ -98,11 +113,12 @@ jobs:
           
       - name: Build Debug APKs
         run: |
-          EXTRA_PROPS=""
           if [ "${{ inputs.side_by_side }}" = "true" ] || [ "${{ github.event_name != 'workflow_dispatch' && github.repository == 'tml10085/CyIME-DK' }}" = "true" ]; then
-            EXTRA_PROPS="-PsideBySide=true"
+            ./gradlew assembleDebug --init-script scripts/phone-release-abi.gradle -PsideBySide=true \
+              -x prepareJapaneseDictionaries -x prepareAzooKeyLibraries -x prepareOfflineTranslateLibraries --no-daemon
+          else
+            ./gradlew assembleDebug --no-daemon
           fi
-          ./gradlew assembleDebug $EXTRA_PROPS --no-daemon
 
       - name: Build Plugin XIPKs
         run: bash scripts/build-plugins.sh
