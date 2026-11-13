@@ -97,6 +97,12 @@ android {
         // applicationId 使用 CyIME 自己的包名，namespace 保留 com.kingzcheung.xime，
         // 以便继续跟踪上游、避免大规模移动源码目录。
         applicationId = "com.cyletix.cyime"
+        val sideBySide = providers.gradleProperty("sideBySide").orNull == "true"
+        if (sideBySide) {
+            applicationIdSuffix = ".dk"
+        }
+        manifestPlaceholders["appLabel"] = if (sideBySide) "CyIME DK" else "@string/app_name"
+        manifestPlaceholders["imeServiceLabel"] = if (sideBySide) "CyIME DK" else "CyIME"
         minSdk = libs.versions.androidMinSdk.get().toInt()
         targetSdk = libs.versions.androidTargetSdk.get().toInt()
         // 按发布批次定号：兼容修复升 PATCH，兼容功能升 MINOR 并归零 PATCH。
@@ -280,8 +286,9 @@ android.applicationVariants.all {
     outputs.all {
         val abi = filters.find { it.filterType.toString() == "ABI" }?.identifier ?: "universal"
         val buildLabel = if (buildType.name == "debug") "-debug" else ""
+        val sideBySideLabel = if (providers.gradleProperty("sideBySide").orNull == "true") "-dk" else ""
         val edition = if (providers.gradleProperty("bundleModels").orNull == "true") "-full" else ""
-        (this as BaseVariantOutputImpl).outputFileName = "$appName-$versionName$edition$buildLabel-$abi.apk"
+        (this as BaseVariantOutputImpl).outputFileName = "$appName-$versionName$edition$sideBySideLabel$buildLabel-$abi.apk"
     }
 }
 

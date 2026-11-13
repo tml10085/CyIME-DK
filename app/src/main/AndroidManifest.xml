@@ -34,7 +34,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/cyime_launcher_facet"
-        android:label="@string/app_name"
+        android:label="${appLabel}"
         android:localeConfig="@xml/locales_config"
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/cyime_launcher_facet"
@@ -99,7 +99,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconOriginal"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="true" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_facet" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_facet" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -108,7 +108,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconNeon"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_neon" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_neon" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -117,7 +117,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconGlass"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_glass" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_glass" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -126,7 +126,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconFacet"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_facet" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_facet" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -135,7 +135,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconFrost"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_frost" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_frost" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -145,7 +145,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconOriginalBare"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@drawable/cyime_launcher_bare_facet" android:label="@string/app_name">
+            android:icon="@drawable/cyime_launcher_bare_facet" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -155,7 +155,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconNeonBare"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@drawable/cyime_launcher_bare_neon" android:label="@string/app_name">
+            android:icon="@drawable/cyime_launcher_bare_neon" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -165,7 +165,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconGlassBare"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@drawable/cyime_launcher_bare_glass" android:label="@string/app_name">
+            android:icon="@drawable/cyime_launcher_bare_glass" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -175,7 +175,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconFacetBare"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@drawable/cyime_launcher_bare_facet" android:label="@string/app_name">
+            android:icon="@drawable/cyime_launcher_bare_facet" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -185,7 +185,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconFrostBare"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@drawable/cyime_launcher_bare_frost" android:label="@string/app_name">
+            android:icon="@drawable/cyime_launcher_bare_frost" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -196,7 +196,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeLavender"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_lavender" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_lavender" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -205,7 +205,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeSoftblue"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_softblue" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_softblue" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -214,7 +214,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeSakura"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_sakura" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_sakura" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -223,7 +223,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeSunset"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_sunset" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_sunset" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -232,7 +232,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeAurora"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_aurora" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_aurora" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -241,7 +241,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeMint"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_mint" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_mint" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -250,7 +250,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeCream"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_cream" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_cream" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -259,7 +259,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeDesert"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_desert" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_desert" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -268,7 +268,7 @@
         <activity-alias android:name="com.kingzcheung.xime.launcher.IconThemeMono"
             android:targetActivity="com.kingzcheung.xime.MainActivity"
             android:enabled="false" android:exported="true"
-            android:icon="@mipmap/cyime_launcher_theme_mono" android:label="@string/app_name">
+            android:icon="@mipmap/cyime_launcher_theme_mono" android:label="${appLabel}">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -379,7 +379,7 @@
         <service
             android:name="com.kingzcheung.xime.service.XimeInputMethodService"
             android:exported="true"
-            android:label="CyIME"
+            android:label="${imeServiceLabel}"
             android:permission="android.permission.BIND_INPUT_METHOD">
             <intent-filter>
                 <action android:name="android.view.InputMethod" />

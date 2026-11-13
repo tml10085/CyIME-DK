@@ -7,6 +7,11 @@ on:
       - dev*
   pull_request:
   workflow_dispatch:
+    inputs:
+      side_by_side:
+        description: 'Build side-by-side CyIME DK package (com.cyletix.cyime.dk)'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -92,7 +97,12 @@ jobs:
           retention-days: 7
           
       - name: Build Debug APKs
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          EXTRA_PROPS=""
+          if [ "${{ inputs.side_by_side }}" = "true" ] || [ "${{ github.event_name != 'workflow_dispatch' && github.repository == 'tml10085/CyIME-DK' }}" = "true" ]; then
+            EXTRA_PROPS="-PsideBySide=true"
+          fi
+          ./gradlew assembleDebug $EXTRA_PROPS --no-daemon
 
       - name: Build Plugin XIPKs
         run: bash scripts/build-plugins.sh
