@@ -77,7 +77,27 @@ jobs:
             
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-        
+
+      # 固定签名：仓库配了 DK_SIGNING_* Secrets 时写出 app/keystore.properties，debug 包每次用同一把密钥签，
+      # 测试包可以直接覆盖安装；没配时照旧用构建机器临时生成的调试签名。
+      - name: Configure fixed signing
+        env:
+          DK_SIGNING_KEY_BASE64: ${{ secrets.DK_SIGNING_KEY_BASE64 }}
+          DK_SIGNING_PASSWORD: ${{ secrets.DK_SIGNING_PASSWORD }}
+          DK_SIGNING_ALIAS: ${{ secrets.DK_SIGNING_ALIAS }}
+        run: |
+          if [ -n "$DK_SIGNING_KEY_BASE64" ] && [ -n "$DK_SIGNING_PASSWORD" ] && [ -n "$DK_SIGNING_ALIAS" ]; then
+            {
+              echo "keyBase64=$DK_SIGNING_KEY_BASE64"
+              echo "storePassword=$DK_SIGNING_PASSWORD"
+              echo "keyPassword=$DK_SIGNING_PASSWORD"
+              echo "keyAlias=$DK_SIGNING_ALIAS"
+            } > app/keystore.properties
+            echo "Fixed signing configured."
+          else
+            echo "No DK_SIGNING_* secrets; using the runner's temporary debug key."
+          fi
+
       - name: Run Unit Tests
         run: |
           if [ "${{ inputs.side_by_side }}" = "true" ] || [ "${{ github.event_name != 'workflow_dispatch' && github.repository == 'tml10085/CyIME-DK' }}" = "true" ]; then
