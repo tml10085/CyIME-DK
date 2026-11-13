@@ -1,0 +1,133 @@
+name: Build and Release CyIME DK
+
+# 丹麦语并装版（com.cyletix.cyime.dk）的正式包：和原版 CyIME 并存，用 DK_SIGNING_* 这把固定密钥签名，
+# 能直接覆盖同一把密钥签的 DK 测试包（debug）。推 dk-v* 标签发布；手动运行只出构建产物、不建 Release。
+# 上游的 release.yml 只认 v*.*.* 标签，dk- 开头的标签不会触发它。
+on:
+  push:
+    tags:
+      - 'dk-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+
+      - name: Install NDK
+        run: |
+          sdkmanager "ndk;29.0.14206865"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$ANDROID_HOME/ndk/29.0.14206865" >> $GITHUB_ENV
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Cache native deps
+        uses: actions/cache@v6
+        with:
+          path: |
+            app/src/main/jni/onnxruntime
+            app/src/main/jniLibs/**/libonnxruntime.so
+          key: native-${{ runner.os }}-${{ hashFiles('app/build-logic/tasks-native.gradle.kts') }}
+          restore-keys: |
+            native-${{ runner.os }}-
+
+      - name: Download native deps (ONNX Runtime)
+        run: ./gradlew downloadOnnx --no-daemon
+
+      - name: Cache CMake build
+        uses: actions/cache@v6
+        with:
+          path: |
+            app/.cxx
+            app/src/main/jni/boost
+            app/src/main/jni/boost-*.tar.xz
+          key: cmake-${{ runner.os }}-${{ hashFiles('app/src/main/jni/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-${{ runner.os }}-
+
+      # 正式包必须用固定密钥：没配 Secrets 就直接失败，不出临时签名的包。
+      - name: Configure fixed signing
+        env:
+          DK_SIGNING_KEY_BASE64: ${{ secrets.DK_SIGNING_KEY_BASE64 }}
+          DK_SIGNING_PASSWORD: ${{ secrets.DK_SIGNING_PASSWORD }}
+          DK_SIGNING_ALIAS: ${{ secrets.DK_SIGNING_ALIAS }}
+        run: |
+          if [ -z "$DK_SIGNING_KEY_BASE64" ] || [ -z "$DK_SIGNING_PASSWORD" ] || [ -z "$DK_SIGNING_ALIAS" ]; then
+            echo "::error::DK_SIGNING_* secrets are missing; refusing to build an unsigned release."
+            exit 1
+          fi
+          {
+            echo "keyBase64=$DK_SIGNING_KEY_BASE64"
+            echo "storePassword=$DK_SIGNING_PASSWORD"
+            echo "keyPassword=$DK_SIGNING_PASSWORD"
+            echo "keyAlias=$DK_SIGNING_ALIAS"
+          } > app/keystore.properties
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 和 DK 测试包同一组参数：并装包名、只出 arm64，跳过本仓库拿不到的日语词库、azooKey 和离线翻译库。
+      - name: Build Release APK (Signed)
+        run: |
+          ./gradlew assembleRelease --init-script scripts/phone-release-abi.gradle -PsideBySide=true \
+            -x prepareJapaneseDictionaries -x prepareAzooKeyLibraries -x prepareOfflineTranslateLibraries --no-daemon
+          mkdir -p app/build/outputs/apk/distribution
+          cp app/build/outputs/apk/release/CyIME-*-dk-*.apk app/build/outputs/apk/distribution/
+
+      - name: Verify APK package and signature
+        run: |
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | tail -1)
+          for apk in app/build/outputs/apk/distribution/CyIME-*.apk; do
+            "$BUILD_TOOLS/aapt2" dump badging "$apk" | grep -q "package: name='com.cyletix.cyime.dk'"
+            OUT=$("$BUILD_TOOLS/apksigner" verify --verbose --min-sdk-version 23 --print-certs "$apk")
+            # vivo OriginOS rejects APKs without a v1 (JAR) signature as 「安装包缺乏开发者证书」.
+            echo "$OUT" | grep -q 'Verified using v1 scheme (JAR signing): true'
+            echo "$OUT" | grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true'
+            echo "$OUT" | grep 'certificate SHA-256 digest'
+            echo "Verified: $apk"
+          done
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cyime-dk-release
+          path: app/build/outputs/apk/distribution/CyIME-*.apk
+          retention-days: 30
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/dk-v')
+        uses: softprops/action-gh-release@v3
+        with:
+          name: CyIME DK ${{ github.ref_name }}
+          generate_release_notes: false
+          files: app/build/outputs/apk/distribution/CyIME-*.apk
+          overwrite: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
