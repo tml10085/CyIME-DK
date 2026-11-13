@@ -8,6 +8,8 @@ enum class InputLanguage(val id: String, val displayName: String) {
 
     /** Languages typed letter by letter straight into the editor (see [LetterLanguage]), with word completions above. */
     val typesLettersDirectly: Boolean get() = this == ENGLISH || LetterLanguage.of(this) != null
+    /** 英文（含英文单词方案）和字母类语言只用半角标点；全角/半角只作用于中文、日文和没写语言的导入方案。 */
+    val usesHalfWidthPunctuation: Boolean get() = this == ENGLISH || LetterLanguage.of(this) != null
 
     companion object {
         /** The elder package offers only Chinese and English; see docs/development/elder-pack-spec.md. */

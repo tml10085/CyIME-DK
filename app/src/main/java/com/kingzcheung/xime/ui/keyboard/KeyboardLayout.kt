@@ -1045,7 +1045,7 @@ fun KeyboardLayout(
                     val periodOnRight = bottomPrefs.qwertyPeriodKey
                     val punctuationFull = LocalKeyboardPunctuation.current?.full ?: !isAsciiMode
                     val (leftPunctuation, rightPunctuation) = spacePunctuationKeys(commaOnLeft, periodOnRight,
-                        punctuationFull, english = isAsciiMode,
+                        punctuationFull, english = isAsciiMode || uiState.inputProfile.language.usesHalfWidthPunctuation,
                         japanese = LocalKeyboardPunctuation.current?.japanese == true)
                     val punctuationCount = (if (commaOnLeft) 1 else 0) + (if (periodOnRight) 1 else 0)
                     val bottomSpaceWeight = bottom.space + bottom.punctuation * (1 - punctuationCount)

@@ -174,7 +174,7 @@ internal class ImeTextCommit(private val service: XimeInputMethodService) {
         // 全角/半角只作用于中文与日文：英文（ASCII）模式和西班牙、德、法、俄、韩语始终输出半角标点。
         // 日文的英数模式除外：全角英数、全角空格是日文输入的常用写法，跟随用户的选择。
         if (service.uiState.value.isAsciiMode && !isJapaneseProfile()) return false
-        if (com.kingzcheung.xime.settings.LetterLanguage.of(service.uiState.value.inputProfile.language) != null) return false
+        if (service.uiState.value.inputProfile.language.usesHalfWidthPunctuation) return false
         return punctuationWidthChoice()
     }
 

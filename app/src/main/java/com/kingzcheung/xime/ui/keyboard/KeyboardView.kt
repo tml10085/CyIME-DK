@@ -396,7 +396,7 @@ fun KeyboardView(
         LocalKeyboardPunctuation provides if (state.isCalculatorMode &&
             state.inputProfile.language != com.kingzcheung.xime.settings.InputLanguage.JAPANESE) null else KeyboardPunctuation(
             // 全角/半角只作用于中文与日文：英文键盘的键面提示与上滑标点保持半角
-            full = !state.isAsciiMode && (state.schemaSwitches.firstOrNull { it.name == "full_shape" }?.currentIndex?.let { it == 1 }
+            full = !state.isAsciiMode && !state.inputProfile.language.usesHalfWidthPunctuation && (state.schemaSwitches.firstOrNull { it.name == "full_shape" }?.currentIndex?.let { it == 1 }
                 ?: SettingsPreferences.punctuationFullWidth(androidx.compose.ui.platform.LocalContext.current, true)),
             japanese = state.inputProfile.language == com.kingzcheung.xime.settings.InputLanguage.JAPANESE,
             chinese = !state.isAsciiMode && state.inputProfile.language == com.kingzcheung.xime.settings.InputLanguage.CHINESE),
