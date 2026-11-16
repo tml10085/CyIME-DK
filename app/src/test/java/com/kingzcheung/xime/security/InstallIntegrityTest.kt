@@ -33,4 +33,16 @@ class InstallIntegrityTest {
     fun unreadableSignatureDoesNotWarn() {
         assertEquals(InstallIntegrity.Result.UNKNOWN, InstallIntegrity.classify(emptyList(), emptyList()))
     }
+
+    @Test
+    fun dkKeyIsOfficialOnlyInSideBySidePackage() {
+        val dk = InstallIntegrity.DK_CERT
+        assertEquals(InstallIntegrity.Result.OFFICIAL,
+            InstallIntegrity.classify(listOf(dk), listOf(dk), InstallIntegrity.officialCerts(sideBySide = true)))
+        assertEquals(InstallIntegrity.Result.OFFICIAL,
+            InstallIntegrity.classify(listOf(official), listOf(official), InstallIntegrity.officialCerts(sideBySide = true)))
+        // 原版包名的包用 DK 密钥签：仍按被改过提示。
+        assertEquals(InstallIntegrity.Result.FOREIGN,
+            InstallIntegrity.classify(listOf(dk), listOf(dk), InstallIntegrity.officialCerts(sideBySide = false)))
+    }
 }

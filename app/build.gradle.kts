@@ -126,6 +126,8 @@ android {
         buildConfigField("boolean", "BUNDLED_MODELS", (providers.gradleProperty("bundleModels").orNull == "true").toString())
         // The elder package (elder-pack-spec.md); other bundled-model builds such as the friend package keep normal behaviour.
         buildConfigField("boolean", "ELDER", (providers.gradleProperty("elderEdition").orNull == "true").toString())
+        // 丹麦语并装包（com.cyletix.cyime.dk）：安装包自检认它自己的 DK 签名（security/InstallIntegrity.kt）。
+        buildConfigField("boolean", "SIDE_BY_SIDE", sideBySide.toString())
         // Developer-only features (handwriting training / capture): only the packager's 装到我的设备 preset (-PdevTools=true)
         // and debug builds show them; public, elder and friend packages never do.
         buildConfigField("boolean", "DEV_TOOLS", (providers.gradleProperty("devTools").orNull == "true").toString())

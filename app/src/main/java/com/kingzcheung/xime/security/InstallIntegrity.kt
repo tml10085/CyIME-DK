@@ -27,7 +27,16 @@ object InstallIntegrity {
         "e0d419cbfc7715e0be5bd98e7e5a26ab7d147a67b15d0961797197e6c76c05e2",
     )
 
-    const val DOWNLOAD_URL = "https://github.com/Cyletix/CyIME/releases"
+    /**
+     * 丹麦语并装包（包名 com.cyletix.cyime.dk）的发布签名，只在 [BuildConfig.SIDE_BY_SIDE] 的包里认：
+     * 原版包仍只认作者那把，DK 密钥签的包冒充不了原版 CyIME。
+     */
+    internal const val DK_CERT = "051b0750162e8fc64687606bddf185c879674ef7ca224eb5ee8cf934bf7bb594"
+
+    internal fun officialCerts(sideBySide: Boolean): Set<String> = if (sideBySide) OFFICIAL_CERTS + DK_CERT else OFFICIAL_CERTS
+
+    val DOWNLOAD_URL: String = if (BuildConfig.SIDE_BY_SIDE) "https://github.com/tml10085/CyIME-DK/releases"
+        else "https://github.com/Cyletix/CyIME/releases"
 
     enum class Result {
         /** 作者签名。 */
@@ -57,10 +66,11 @@ object InstallIntegrity {
      * [current] 是现在给包签名的证书；[history] 是单签名时系统记下的轮换历史（含现在这把）。
      * 多签名时每一把都要是作者的；单签名时现在这把或它轮换前的任一把是作者的就算官方。
      */
-    internal fun classify(current: List<String>, history: List<String>): Result {
+    internal fun classify(current: List<String>, history: List<String>,
+        official: Set<String> = officialCerts(BuildConfig.SIDE_BY_SIDE)): Result {
         if (current.isEmpty()) return Result.UNKNOWN
-        if (current.all { it.lowercase() in OFFICIAL_CERTS }) return Result.OFFICIAL
-        if (current.size == 1 && history.any { it.lowercase() in OFFICIAL_CERTS }) return Result.OFFICIAL
+        if (current.all { it.lowercase() in official }) return Result.OFFICIAL
+        if (current.size == 1 && history.any { it.lowercase() in official }) return Result.OFFICIAL
         return Result.FOREIGN
     }
 
