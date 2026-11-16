@@ -29,6 +29,7 @@ internal class WordLexicon(private val words: List<String>) {
     /**
      * 打到一半的 [typed] 可以补成的词，最多 [limit] 个：去掉重音后整词一样的排前面（esta → está），
      * 再按词频排补全。不含与 [typed] 完全相同的词（它已经在候选栏第一个）。首字母大写时候选也大写。
+     * 一个也补不出来时，改给拼错纠正（[TypoCorrection]）。
      */
     fun complete(typed: String, limit: Int): List<String> {
         if (typed.isEmpty() || limit <= 0) return emptyList()
@@ -52,8 +53,30 @@ internal class WordLexicon(private val words: List<String>) {
         if (digraphLower != lower) collect(digraphLower)
         exact.sort()
         longer.sort()
-        return (exact + longer).asSequence().map { cased(words[it], typed) }
+        val completions = (exact + longer).asSequence().map { cased(words[it], typed) }
             .filter { it != typed }.distinct().take(limit).toList()
+        // 打的不是词、也补全不出任何词时，给只差一处的常用词（tka → tak），见 [TypoCorrection]。
+        if (exact.isNotEmpty() || longer.isNotEmpty()) return completions
+        return TypoCorrection.corrections(fold(lower), alphabet, completes = false, maxRank = MAX_CORRECTION_RANK) { variant ->
+            exactIndex(variant)?.let { words[it] to it }
+        }.map { cased(it, typed) }.filter { it != typed }.distinct().take(limit)
+    }
+
+    /** 词表里出现过的（去重音后的）字母，纠错时拿它们去替换、插入。 */
+    private val alphabet: String by lazy {
+        keys.flatMapTo(sortedSetOf()) { key -> key.filter(Char::isLetter).toList() }.joinToString("")
+    }
+
+    /** 去重音后整词等于 [key] 的最常用那个词的下标；没有返回 null。 */
+    private fun exactIndex(key: String): Int? {
+        var position = lowerBound(key)
+        var best: Int? = null
+        while (position < keys.size && keys[position] == key) {
+            val index = byKey[position]
+            if (best == null || index < best) best = index
+            position++
+        }
+        return best
     }
 
     private fun lowerBound(prefix: String): Int {
@@ -67,6 +90,9 @@ internal class WordLexicon(private val words: List<String>) {
     }
 
     companion object {
+        /** 排名在这之后的冷门词不拿来纠正（4 万词的表里约前六成）。 */
+        private const val MAX_CORRECTION_RANK = 25_000
+
         private fun foldChar(char: Char): String = when (char) {
             'á', 'à', 'â', 'ä', 'ã', 'å' -> "a"; 'é', 'è', 'ê', 'ë' -> "e"; 'í', 'ì', 'î', 'ï' -> "i"
             'ó', 'ò', 'ô', 'ö', 'õ', 'ø' -> "o"; 'ú', 'ù', 'û', 'ü' -> "u"; 'ñ' -> "n"; 'ç' -> "c"; 'ÿ' -> "y"

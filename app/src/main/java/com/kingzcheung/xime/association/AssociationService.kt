@@ -11,6 +11,7 @@ import kotlinx.coroutines.withContext
 object AssociationService {
     private const val TAG = "AssociationService"
     private const val CONTRACTIONS_FILE = "english_contractions.txt"
+    private const val ENGLISH_LETTERS = "abcdefghijklmnopqrstuvwxyz"
     
     @Volatile private var trieEngine: TrieAssociationEngine? = null
     /** 英文补全用的缩写表（im → I'm）；读不到就不给缩写，补全照常。 */
@@ -77,8 +78,7 @@ object AssociationService {
     ): List<String> {
         // Load the English dictionary on its first request, shared by concurrent keystrokes.
         if (topK <= 0) return emptyList()
-        val bundled = if (initialize(context)) trieEngine?.predict(prefix, topK).orEmpty().map { it.text }
-            else emptyList()
+        val scored = if (initialize(context)) trieEngine?.predict(prefix, topK).orEmpty() else emptyList()
         val imported = withContext(Dispatchers.IO) {
             try {
                 com.kingzcheung.xime.settings.CellDictionaryManager.store(context).englishCompletions(prefix, topK)
@@ -90,6 +90,12 @@ object AssociationService {
                 emptyList()
             }
         }
+        // 词表和导入词库都补全不出任何词时（打的也就不是词），给只差一处的常用词：teh → the、helo → hello（[TypoCorrection]）。
+        val bundled = if (scored.isNotEmpty() || imported.isNotEmpty()) scored.map { it.text }
+            else trieEngine?.let { engine ->
+                TypoCorrection.corrections(prefix.lowercase(), ENGLISH_LETTERS, completes = false, rank = engine::rankOf)
+                    .map { WordLexicon.cased(it, prefix) }
+            }.orEmpty()
         val words = if (imported.isEmpty()) bundled else
             (bundled.take(1) + imported + bundled.drop(1)).distinctBy { it.lowercase() }.take(topK)
         val table = contractions ?: return words

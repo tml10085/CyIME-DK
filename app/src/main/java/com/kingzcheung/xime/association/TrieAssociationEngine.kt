@@ -186,6 +186,15 @@ class TrieAssociationEngine {
         }
     }
     
+    /** 整词 [word]（小写）在词表里时返回它的写法和词频排名（越小越常用），不在返回 null。拼错纠正用。 */
+    fun rankOf(word: String): Pair<String, Int>? {
+        if (!isInitialized || nodes == null || word.isEmpty()) return null
+        val index = findNode(word)
+        if (index < 0) return null
+        val node = nodes!![index]
+        return node.word?.let { it to node.frequency }
+    }
+
     private fun findNode(prefix: String): Int {
         var current = 0
         for (char in prefix) {

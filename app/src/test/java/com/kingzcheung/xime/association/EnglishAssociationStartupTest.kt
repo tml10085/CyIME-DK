@@ -58,6 +58,21 @@ class EnglishAssociationStartupTest {
         assertEquals("help", words("hel").first())
     }
 
+    @Test fun misspelledWordsOfferTheCommonWord() = runBlocking {
+        val app = context { bundledTrie().inputStream() }
+        suspend fun words(prefix: String) = AssociationService.getAssociations(app, prefix, true, 6)
+        assertEquals("the", words("teh").first())
+        assertEquals("The", words("Teh").first())
+        assertEquals("THE", words("TEH").first())
+        assertEquals("their", words("thier").first())
+        assertEquals("because", words("becuase").first())
+        assertTrue("receive" in words("recieve"))
+        assertTrue("hello" in words("helo"))
+        // 还没打完的词照旧先出补全，不夹 he、her。
+        assertEquals("help", words("hel").first())
+        assertFalse("he" in words("hel"))
+    }
+
     @Before fun resetBefore() = AssociationService.release()
     @After fun resetAfter() = AssociationService.release()
 

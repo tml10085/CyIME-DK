@@ -95,4 +95,14 @@ class WordLexiconTest {
         assertTrue("spørgsmål" in danish.complete("sporgsmal", 5))
         assertTrue("spørgsmål" in danish.complete("spoergsmaal", 5))
     }
+
+    @Test fun `danish typos offer the intended common word`() {
+        val danish = words("da")
+        assertEquals("tak", danish.complete("tka", 5).first())       // 打反
+        assertEquals("jeg", danish.complete("jge", 5).first())
+        assertTrue("København" in danish.complete("kbenhavn", 5))     // 漏打 ø
+        assertTrue("hvordan" in danish.complete("hvordna", 5))
+        // 打的本身是词：不出纠正。
+        assertFalse("tal" in danish.complete("tak", 10))
+    }
 }
