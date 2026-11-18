@@ -66,12 +66,14 @@ internal object TypoCorrection {
      *
      * [completes]：打的字母还能补全成别的词（多半是还没打完，hel → help、stra → Straße）。这时不纠正：
      * 打到一半时候选都以打的字母开头，不夹 he、Star 这类改了前缀的词。补全不出任何词时才找纠正。
+     * [maxScore]：只要 [score] 小于它的纠正（补全出的只有冷门词时，用来挑比它们常用得多的纠正）。
      */
     fun corrections(typed: String, alphabet: String, completes: Boolean, limit: Int = LIMIT, maxRank: Int = Int.MAX_VALUE,
-        rank: (String) -> Pair<String, Int>?): List<String> {
+        maxScore: Double = Double.MAX_VALUE, rank: (String) -> Pair<String, Int>?): List<String> {
         if (completes || typed.length !in MIN_LENGTH..MAX_LENGTH || typed.any { !it.isLetter() } || limit <= 0) return emptyList()
         return edits(typed, alphabet).mapNotNull { (variant, cost) ->
             rank(variant)?.takeIf { it.second <= maxRank }?.let { (word, r) -> word to score(r, cost) }
+                ?.takeIf { it.second < maxScore }
         }.groupBy { it.first.lowercase() }.map { (_, same) -> same.minBy { it.second } }
             .sortedBy { it.second }.take(limit).map { it.first }
     }

@@ -81,10 +81,28 @@ class EnglishAssociationStartupTest {
         File("app/src/main/assets/english_trie.bin")
     ).first { it.isFile }.readBytes()
 
+    private fun bigWords(): ByteArray = listOf(
+        File("src/main/assets/cyime-words-en-v1.txt"),
+        File("app/src/main/assets/cyime-words-en-v1.txt")
+    ).first { it.isFile }.readBytes()
+
+    @Test fun bigWordListCompletesRareWordsAfterTheCommonOnes() = runBlocking {
+        val app = context { bundledTrie().inputStream() }
+        suspend fun words(prefix: String) = AssociationService.getAssociations(app, prefix, true, 6)
+        assertTrue("stoichiometry" in words("stoich"))
+        assertTrue("oxalic" in words("oxali"))
+        // 常用词表的补全仍排在前面。
+        assertEquals("help", words("hel").first())
+        // 只有大写写法的词整词打出时排第一。
+        assertEquals("pH", words("ph").first())
+        assertEquals("DNA", words("dna").first())
+    }
+
     private fun context(open: () -> InputStream): Context {
         val assets = mock<AssetManager>()
         whenever(assets.list("")).thenReturn(arrayOf("english_trie.bin"))
         whenever(assets.open("english_trie.bin")).thenAnswer { open() }
+        whenever(assets.open("cyime-words-en-v1.txt")).thenAnswer { bigWords().inputStream() }
         return mock<Context>().also { whenever(it.assets).thenReturn(assets) }
     }
 

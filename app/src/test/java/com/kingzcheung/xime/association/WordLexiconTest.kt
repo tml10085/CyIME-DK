@@ -105,4 +105,25 @@ class WordLexiconTest {
         // 打的本身是词：不出纠正。
         assertFalse("tal" in danish.complete("tak", 10))
     }
+
+    @Test fun `english big list completes rare words and keeps fixed capitals`() {
+        val english = words("en")
+        // 随包的就是 tools/wordlists 里这份。
+        val asset = listOf(File("src/main/assets/cyime-words-en-v1.txt"), File("app/src/main/assets/cyime-words-en-v1.txt")).first { it.isFile }
+        assertEquals(listOf(File("tools/wordlists/cyime-words-en-v1.txt"), File("../tools/wordlists/cyime-words-en-v1.txt"))
+            .first { it.isFile }.readText(), asset.readText())
+        assertTrue("stoichiometry" in english.complete("stoichi", 5))
+        assertTrue("titration" in english.complete("titrat", 5))
+        assertTrue("oxalic" in english.complete("oxali", 5))
+        // 只有大写写法的词：小写、句首大写都给原样写法，整词排第一。
+        assertEquals("pH", english.complete("ph", 5).first())
+        assertEquals("pH", english.complete("Ph", 5).first())
+        assertEquals("DNA", english.complete("dna", 5).first())
+        // 小写本身就是词的不改成大写缩写。
+        assertFalse("US" in english.complete("us", 20))
+        // 别的词表已补全出词时（correct = false）不给纠正。
+        // teh 只补得出冷门的 Tehran：常用得多的 the 排在前面。
+        assertEquals("the", english.complete("teh", 5).first())
+        assertFalse("the" in english.complete("teh", 5, correct = false))
+    }
 }

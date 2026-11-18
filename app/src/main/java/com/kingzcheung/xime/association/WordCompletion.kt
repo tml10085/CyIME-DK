@@ -29,9 +29,10 @@ internal class WordLexicon(private val words: List<String>) {
     /**
      * 打到一半的 [typed] 可以补成的词，最多 [limit] 个：去掉重音后整词一样的排前面（esta → está），
      * 再按词频排补全。不含与 [typed] 完全相同的词（它已经在候选栏第一个）。首字母大写时候选也大写。
-     * 一个也补不出来时，改给拼错纠正（[TypoCorrection]）。
+     * 一个也补不出来时，改给拼错纠正（[TypoCorrection]）；打的不是词、补全出的又都是冷门词时（teh 只补得出 Tehran），
+     * 比它们常用得多的纠正排在补全前面（the）。[correct] 为 false 时不纠正（别的词表已经补全出了词）。
      */
-    fun complete(typed: String, limit: Int): List<String> {
+    fun complete(typed: String, limit: Int, correct: Boolean = true): List<String> {
         if (typed.isEmpty() || limit <= 0) return emptyList()
         val lower = typed.lowercase()
         val exact = mutableListOf<Int>()
@@ -55,11 +56,12 @@ internal class WordLexicon(private val words: List<String>) {
         longer.sort()
         val completions = (exact + longer).asSequence().map { cased(words[it], typed) }
             .filter { it != typed }.distinct().take(limit).toList()
-        // 打的不是词、也补全不出任何词时，给只差一处的常用词（tka → tak），见 [TypoCorrection]。
-        if (exact.isNotEmpty() || longer.isNotEmpty()) return completions
-        return TypoCorrection.corrections(fold(lower), alphabet, completes = false, maxRank = MAX_CORRECTION_RANK) { variant ->
-            exactIndex(variant)?.let { words[it] to it }
-        }.map { cased(it, typed) }.filter { it != typed }.distinct().take(limit)
+        // 打的不是词时，给只差一处的常用词（tka → tak），见 [TypoCorrection]。
+        if (exact.isNotEmpty() || !correct) return completions
+        val maxScore = longer.firstOrNull()?.let { TypoCorrection.score(it, 0) - RARE_COMPLETION_MARGIN } ?: Double.MAX_VALUE
+        val corrections = TypoCorrection.corrections(fold(lower), alphabet, completes = false, maxRank = MAX_CORRECTION_RANK,
+            maxScore = maxScore) { variant -> exactIndex(variant)?.let { words[it] to it } }.map { cased(it, typed) }
+        return (corrections + completions).filter { it != typed }.distinct().take(limit)
     }
 
     /** 词表里出现过的（去重音后的）字母，纠错时拿它们去替换、插入。 */
@@ -92,6 +94,8 @@ internal class WordLexicon(private val words: List<String>) {
     companion object {
         /** 排名在这之后的冷门词不拿来纠正（4 万词的表里约前六成）。 */
         private const val MAX_CORRECTION_RANK = 25_000
+        /** 纠正要比最常用的补全常用约 20 倍（[TypoCorrection.score] 差 3）才排到补全前面。 */
+        private const val RARE_COMPLETION_MARGIN = 3.0
 
         private fun foldChar(char: Char): String = when (char) {
             'á', 'à', 'â', 'ä', 'ã', 'å' -> "a"; 'é', 'è', 'ê', 'ë' -> "e"; 'í', 'ì', 'î', 'ï' -> "i"
@@ -122,10 +126,13 @@ internal class WordLexicon(private val words: List<String>) {
             return true
         }
 
-        /** Cancion → Canción，CANC → CANCIÓN；词表里本来大写的（Madrid、Haus）保持大写。 */
+        /**
+         * Cancion → Canción，CANC → CANCIÓN；词表里本来大写的（Madrid、Haus）保持大写；
+         * 第一个字母之后也有大写的（pH、iPhone）句首打 Ph 时仍给 pH。
+         */
         fun cased(word: String, typed: String): String = when {
             typed.length > 1 && typed.all { !it.isLetter() || it.isUpperCase() } -> word.uppercase()
-            typed.first().isUpperCase() -> word.replaceFirstChar { it.uppercaseChar() }
+            typed.first().isUpperCase() && word.drop(1).none(Char::isUpperCase) -> word.replaceFirstChar { it.uppercaseChar() }
             else -> word
         }
     }

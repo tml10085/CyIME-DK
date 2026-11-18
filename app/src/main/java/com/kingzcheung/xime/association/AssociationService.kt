@@ -12,10 +12,14 @@ object AssociationService {
     private const val TAG = "AssociationService"
     private const val CONTRACTIONS_FILE = "english_contractions.txt"
     private const val ENGLISH_LETTERS = "abcdefghijklmnopqrstuvwxyz"
+    /** 10 万词的英文词表（tools/wordlists/build_words.py en），补常用词表里没有的词：stoichiometry、pH、DNA。 */
+    private const val WORDS_FILE = "cyime-words-en-v1.txt"
     
     @Volatile private var trieEngine: TrieAssociationEngine? = null
     /** 英文补全用的缩写表（im → I'm）；读不到就不给缩写，补全照常。 */
     @Volatile private var contractions: com.kingzcheung.xime.glide.EnglishContractions? = null
+    /** 英文大词表；读不到就只用常用词表。 */
+    @Volatile private var lexicon: WordLexicon? = null
     @Volatile private var isInitialized = false
     private val initializationMutex = Mutex()
     
@@ -35,6 +39,12 @@ object AssociationService {
                     context.assets.open(CONTRACTIONS_FILE).bufferedReader()
                         .useLines { com.kingzcheung.xime.glide.EnglishContractions(it.toList().asSequence()) }
                 }.getOrNull()
+                if (trieInit) lexicon = runCatching {
+                    context.assets.open(WORDS_FILE).bufferedReader().useLines { lines ->
+                        WordLexicon(lines.map(String::trim)
+                            .filter { it.isNotEmpty() && !WordBigramPredictor.isProfaneEnglishWord(it) }.toList())
+                    }
+                }.onFailure { Log.w(TAG, "English word list could not load", it) }.getOrNull()
                 isInitialized = trieInit
                 Log.i(TAG, "Association service initialized: trie=$trieInit")
                 trieInit
@@ -90,12 +100,18 @@ object AssociationService {
                 emptyList()
             }
         }
-        // 词表和导入词库都补全不出任何词时（打的也就不是词），给只差一处的常用词：teh → the、helo → hello（[TypoCorrection]）。
-        val bundled = if (scored.isNotEmpty() || imported.isNotEmpty()) scored.map { it.text }
-            else trieEngine?.let { engine ->
+        // 常用词表排前，大词表补后面：打 stoi 也能出 stoichiometry。第二个字母起有大写的词整词打出时排第一（ph → pH、dna → DNA）。
+        // 打的不是词时给只差一处的常用词：teh → the、helo → hello（[TypoCorrection]）；常用词表补全出了词时不纠正。
+        val correct = scored.isEmpty() && imported.isEmpty()
+        val more = lexicon?.complete(prefix, topK, correct).orEmpty()
+        val bundled = when {
+            !correct || more.isNotEmpty() -> (more.filter { it.equals(prefix, ignoreCase = true) && it.drop(1).any(Char::isUpperCase) } + scored.map { it.text } + more)
+                .distinctBy { it.lowercase() }.take(topK)
+            else -> trieEngine?.let { engine ->
                 TypoCorrection.corrections(prefix.lowercase(), ENGLISH_LETTERS, completes = false, rank = engine::rankOf)
                     .map { WordLexicon.cased(it, prefix) }
             }.orEmpty()
+        }
         val words = if (imported.isEmpty()) bundled else
             (bundled.take(1) + imported + bundled.drop(1)).distinctBy { it.lowercase() }.take(topK)
         val table = contractions ?: return words
@@ -137,6 +153,7 @@ object AssociationService {
         trieEngine?.release()
         trieEngine = null
         contractions = null
+        lexicon = null
         isInitialized = false
     }
 }
