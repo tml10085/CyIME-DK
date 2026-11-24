@@ -112,8 +112,17 @@ object AssociationService {
                     .map { WordLexicon.cased(it, prefix) }
             }.orEmpty()
         }
-        val words = if (imported.isEmpty()) bundled else
+        val merged = if (imported.isEmpty()) bundled else
             (bundled.take(1) + imported + bundled.drop(1)).distinctBy { it.lowercase() }.take(topK)
+        // 自己打过的特殊大小写词（HCl、NaOH）：整词打出时排第一，打了开头时排第二；单独的 i 给 I。
+        val remembered = runCatching {
+            com.kingzcheung.xime.settings.EnglishWordMemory.mixedCaseCompletions(
+                com.kingzcheung.xime.settings.SchemaManager.getRimeDir(context), prefix)
+        }.getOrDefault(emptyList())
+        val (exact, started) = remembered.partition { it.equals(prefix, ignoreCase = true) }
+        val words = (listOfNotNull("I".takeIf { prefix == "i" }) + exact + merged.take(1) + started + merged.drop(1))
+            .map { if (it == "i") "I" else it }
+            .distinctBy { it.lowercase() }.take(topK)
         val table = contractions ?: return words
         return EnglishContractionCompletion.apply(prefix, words, topK) { word ->
             table.display(word).takeIf { it != word } ?: table.offer(word)

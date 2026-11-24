@@ -218,6 +218,9 @@ class PredictionManager(
         else serviceScope.launch(learningLane) { AssociationManager.recordInput(bridge.toSimplified(text)) }
     }
     
+    /** 补全走英文词表（不是丹麦语等字母语言）。 */
+    fun completesEnglish(): Boolean = com.kingzcheung.xime.settings.LetterLanguage.of(completionLanguage()) == null
+
     suspend fun getEnglishAssociations(text: String, limit: Int = MAX_ASSOCIATION_COUNT): List<String> {
         return try {
             val letters = com.kingzcheung.xime.settings.LetterLanguage.of(completionLanguage())

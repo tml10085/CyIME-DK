@@ -1529,6 +1529,11 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
                     if (pendingEnglish.isNotEmpty()) {
                         // 直接上屏模式：词已逐字落盘，此处只提交空格并结束本轮英文输入，随后给出下一词联想。
                         withEditor {
+                            // 英文里单独打的 i 按空格时改成 I（丹麦语等的 i 是词，不改）。
+                            if (pendingEnglish == "i" && service.predictionManager.completesEnglish()) {
+                                if (service.uiState.value.inputTarget.isInternal) service.replaceBeforeCursor("i", "I")
+                                else service.currentInputConnection?.commitEnglishCompletion("i", "I")
+                            }
                             service.commitText(" ")
                             service.candidateState.value = service.candidateState.value.copy(
                                 pendingEnglishText = "",
@@ -2234,6 +2239,13 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         if (cleaned.isEmpty() || service.isSecretEditor() || usesDirectFieldInput) {
             service.predictionManager.clearLetterWordContext()
             return
+        }
+        // 英文里自己打的特殊大小写词（HCl、NaOH）记下来，下次打 hcl 也给 HCl；无痕时不记。
+        if (cleaned.drop(1).any(Char::isUpperCase) && !com.kingzcheung.xime.settings.IncognitoState.active) {
+            val rimeDir = com.kingzcheung.xime.settings.SchemaManager.getRimeDir(service)
+            service.serviceScope.launch(Dispatchers.IO) {
+                com.kingzcheung.xime.settings.EnglishWordMemory.remember(rimeDir, cleaned)
+            }
         }
         if (!showsLetterNextWords(service.uiState.value)) {
             service.predictionManager.clearLetterWordContext()

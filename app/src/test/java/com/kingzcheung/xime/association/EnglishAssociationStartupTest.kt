@@ -96,6 +96,9 @@ class EnglishAssociationStartupTest {
         // 只有大写写法的词整词打出时排第一。
         assertEquals("pH", words("ph").first())
         assertEquals("DNA", words("dna").first())
+        // 单独的 i 给大写 I，不重复给小写。
+        assertEquals("I", words("i").first())
+        assertFalse("i" in words("i"))
     }
 
     private fun context(open: () -> InputStream): Context {

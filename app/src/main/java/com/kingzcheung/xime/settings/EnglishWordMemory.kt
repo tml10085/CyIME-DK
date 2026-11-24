@@ -27,6 +27,27 @@ object EnglishWordMemory {
         }
     }
 
+    /** Cached file contents, keyed by path, size and modification time. */
+    @Volatile private var cache: Triple<String, Long, List<String>>? = null
+
+    /**
+     * English direct input: remembered words spelled with a capital after the first letter (HCl, NaOH, iPhone)
+     * that start with [typed] (two letters and more), newest first. Plain lowercase words, which Chinese 26-key
+     * also remembers from raw pinyin on Enter, are left out.
+     */
+    fun mixedCaseCompletions(rimeDir: File, typed: String, limit: Int = 2): List<String> {
+        if (typed.length < 2 || limit <= 0) return emptyList()
+        val file = File(rimeDir, FILE_NAME)
+        if (!file.isFile) return emptyList()
+        val key = file.length() * 31 + file.lastModified()
+        val words = cache?.takeIf { it.first == file.path && it.second == key }?.third
+            ?: runCatching { compact(file.readLines()).asReversed() }.getOrDefault(emptyList())
+                .also { cache = Triple(file.path, key, it) }
+        return words.asSequence()
+            .filter { it.startsWith(typed, ignoreCase = true) && it.drop(1).any(Char::isUpperCase) }
+            .take(limit).toList()
+    }
+
     /** Long-press delete forgets the word in every spelling; false when it was never remembered. */
     @Synchronized
     fun forget(rimeDir: File, text: String): Boolean {

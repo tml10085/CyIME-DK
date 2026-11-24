@@ -51,4 +51,23 @@ class EnglishWordMemoryTest {
     fun backupIncludesTheWordFile() {
         assertTrue(BackupManager.isRimePersonalFile(EnglishWordMemory.FILE_NAME))
     }
+
+    @Test
+    fun `english direct input offers remembered mixed-case words, newest first`() {
+        val dir = tempDir.newFolder("rime")
+        EnglishWordMemory.remember(dir, "HCl")
+        EnglishWordMemory.remember(dir, "Obsidian")
+        EnglishWordMemory.remember(dir, "nihao")
+        EnglishWordMemory.remember(dir, "HCOOH")
+        assertEquals(listOf("HCOOH", "HCl"), EnglishWordMemory.mixedCaseCompletions(dir, "hc"))
+        assertEquals(listOf("HCl"), EnglishWordMemory.mixedCaseCompletions(dir, "Hcl"))
+        // 只有首字母大写的（可能是句首自动大写）和小写的（中文里回车上屏的拼音）不给。
+        assertTrue(EnglishWordMemory.mixedCaseCompletions(dir, "obs").isEmpty())
+        assertTrue(EnglishWordMemory.mixedCaseCompletions(dir, "nih").isEmpty())
+        // 一个字母不给。
+        assertTrue(EnglishWordMemory.mixedCaseCompletions(dir, "h").isEmpty())
+        // 新记的词马上能出。
+        EnglishWordMemory.remember(dir, "NaOH")
+        assertEquals(listOf("NaOH"), EnglishWordMemory.mixedCaseCompletions(dir, "nao"))
+    }
 }
