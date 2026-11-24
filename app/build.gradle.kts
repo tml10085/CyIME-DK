@@ -108,8 +108,8 @@ android {
         // 按发布批次定号：兼容修复升 PATCH，兼容功能升 MINOR 并归零 PATCH。
         // 不兼容变更升 MAJOR；日常编辑不逐次升号。完整规则见 docs/packaging.md。
         // versionCode 是独立递增的交付序号；同批普通版与内置版共用。
-        versionCode = 20261435
-        versionName = "1.15.82"
+        versionCode = 20261436
+        versionName = "1.15.83"
 
 
         // Isolated Compose rendering on a local x86 emulator; ordinary device tests keep the full app.
