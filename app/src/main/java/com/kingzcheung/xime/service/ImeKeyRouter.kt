@@ -956,6 +956,7 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
     internal fun handleKeyPress(key: String, isShifted: Boolean, hardwarePageDirection: Int = 0,
         languageSwitchMode: com.kingzcheung.xime.settings.LanguageSwitchMode? = null,
         hardwareEvent: KeyEvent? = null, mergedKey: Boolean = false) {
+        if (key == "delete" && hardwareEvent == null) com.kingzcheung.xime.stats.TouchLog.delete()
         if (hasPendingCandidateCommit) {
             service.noteInputDropped("key_pending_commit")
             return

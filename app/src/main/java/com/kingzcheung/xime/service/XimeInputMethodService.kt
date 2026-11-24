@@ -1136,6 +1136,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         super.onCreate()
         if (BuildConfig.DEV_TOOLS) EnterProbe.service = java.lang.ref.WeakReference(this)
         com.kingzcheung.xime.stats.TypingStats.init(this)
+        com.kingzcheung.xime.stats.TouchLog.init(this)
         com.kingzcheung.xime.ui.keyboard.HandwritingGlassRegion.reporter = handwritingGlassRegionReporter
         com.kingzcheung.xime.ui.keyboard.CursorLineMetrics.requester = cursorLineRequester
         // 记录与打字速度有关的本机状态（用户词库体积、可选模型、内存余量），只记数量不记内容。
@@ -4564,6 +4565,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         editorRestricted = EditorInfoClassifier.isRestrictedEditor(attribute)
         // 秘密输入框判定（密码/终端，不含 NO_SUGGESTIONS）：英文联想/回删替换的禁用线
         editorSecret = EditorInfoClassifier.isSecretEditor(attribute)
+        com.kingzcheung.xime.stats.TouchLog.secretEditor = editorSecret
         TerminalEditor.active = EditorInfoClassifier.isTerminalEditor(attribute)
         return editorInputPolicy.begin(attribute, restarting, uiState.value.isAsciiMode, uiState.value.currentSchemaId,
             addressEnglish = SettingsPreferences.getPrefsPublic(this).getBoolean(

@@ -22,7 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.twotone.Delete
 import androidx.compose.material.icons.twotone.QueryStats
+import androidx.compose.material.icons.twotone.Share
+import androidx.compose.material.icons.twotone.TouchApp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -74,6 +77,8 @@ fun TypingStatsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var data by remember { mutableStateOf<TypingStatsData?>(null) }
     var enabled by remember { mutableStateOf(TypingStats.isEnabled(context)) }
+    var touchLog by remember { mutableStateOf(com.kingzcheung.xime.settings.SettingsPreferences.getPrefsPublic(context)
+        .getBoolean(com.kingzcheung.xime.stats.TouchLog.PREF_KEY, false)) }
     LaunchedEffect(Unit) { data = withContext(Dispatchers.IO) { TypingStats.snapshot(context) } }
     val today = remember { TypingStats.today() }
 
@@ -97,9 +102,33 @@ fun TypingStatsScreen(onBack: () -> Unit) {
                 SettingsToggleItem(Icons.TwoTone.QueryStats, "记录打字统计", "关闭后停止计数，已有数据保留",
                     checked = enabled, onCheckedChange = { enabled = it; TypingStats.setEnabled(context, it) },
                     costItem = com.kingzcheung.xime.settings.PerformanceCosts.Item.TYPING_STATS)
+                SettingsToggleItem(Icons.TwoTone.TouchApp, "记录按键触点（调试）",
+                    "记下每次按在键的哪个位置、之后有没有删，用来找误触多的键；会记下按了哪些字母",
+                    checked = touchLog, onCheckedChange = {
+                        touchLog = it
+                        com.kingzcheung.xime.stats.TouchLog.setEnabled(context, it)
+                    })
+                SettingsItem(Icons.TwoTone.Share, "导出触点记录", "分享 touch-log.csv（CSV 表格）", onClick = {
+                    val file = com.kingzcheung.xime.stats.TouchLog.file(context)
+                    if (!file.isFile) {
+                        android.widget.Toast.makeText(context, "还没有触点记录", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                        val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/csv")
+                            .putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                            .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        context.startActivity(android.content.Intent.createChooser(send, "导出触点记录")
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                })
+                SettingsItem(Icons.TwoTone.Delete, "清除触点记录", "删掉本机保存的触点记录", onClick = {
+                    com.kingzcheung.xime.stats.TouchLog.clear(context)
+                    android.widget.Toast.makeText(context, "已清除", android.widget.Toast.LENGTH_SHORT).show()
+                })
             })
             SettingsNote("仅在本机计数，只记字数、按键数和次数，不记录输入内容，不联网。密码框和无痕模式不计数。" +
-                "码长不含删除键，粘贴不计入字数和速度。分享内容仅含速度和字数。")
+                "码长不含删除键，粘贴不计入字数和速度。分享内容仅含速度和字数。" +
+                "按键触点记录默认关，只存本机，最多约 8 MB，导出由你自己分享。")
         }
     }
 }

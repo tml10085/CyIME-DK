@@ -379,6 +379,7 @@ fun SwipeableKeyButton(
     // 方向圆盘只在手指拂出去或按住一会儿后出现；快速点按不弹（用户 11-03：只点不拂时轮盘让打字发卡）。
     var discRevealed by remember { mutableStateOf(false) }
     var buttonBounds by remember { mutableStateOf(Rect.Zero) }
+    val touchOrigin = remember { arrayOf(Offset.Zero) }
     // 浮标按这一刻按键的位置画，见 [LiveBounds]。
     val liveBounds = remember { LiveBounds() }
 
@@ -611,6 +612,24 @@ fun SwipeableKeyButton(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     ctrlTapFraction[0] = if (size.width > 0) down.position.x / size.width else 0.5f
+                }
+            } else Modifier)
+            .then(if (com.kingzcheung.xime.stats.TouchLog.enabled) Modifier.onGloballyPositioned {
+                touchOrigin[0] = it.boundsInRoot().topLeft
+            }.pointerInput(text) {
+                // 触点记录（调试，默认关）：只看不消费，见 TouchLog。
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    var last = down.position
+                    while (true) {
+                        val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                        last = change.position
+                        if (!change.pressed) break
+                    }
+                    val origin = touchOrigin[0]
+                    com.kingzcheung.xime.stats.TouchLog.key(text, origin.x, origin.y, size.width.toFloat(), size.height.toFloat(),
+                        origin.x + down.position.x, origin.y + down.position.y, origin.x + last.x, origin.y + last.y,
+                        android.os.SystemClock.uptimeMillis() - down.uptimeMillis)
                 }
             } else Modifier)
             .pointerInput(reserveDragForGlide, letterGlideOwnsDrag) {
