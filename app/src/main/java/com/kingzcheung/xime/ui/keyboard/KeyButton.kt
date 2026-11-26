@@ -496,9 +496,14 @@ fun SwipeableKeyButton(
     }
     val inputActions = LocalKeyboardInputActions.current
     val bindings = if (inputActions.englishLetters) inputPreferences.englishLetterSwipes else inputPreferences.chineseLetterSwipes
-    val currentActions by rememberUpdatedState(if (bindings.isEmpty() || letterSwipeLayout ||
+    // 跨键交接只给 26 键的单字母键（含 æøå）：九键拂动、14 键和自建合并键要到松手才知道是哪个字母，不参与。
+    val keyRollover = LocalKeyRollover.current?.takeIf {
+        flick == null && letters == null && !letterSwipeLayout && letterGroup?.singleOrNull()?.isLetter() == true
+    }
+    val currentActions by rememberUpdatedState((if (bindings.isEmpty() || letterSwipeLayout ||
         flick != null || letterGroup?.length != 1 || inputActions.onLetterSwipeAction == null) gestureActions
         else gestureActions.withLetterSwipes(letterGroup.lowercase(), bindings, inputActions.onLetterSwipeAction))
+        .let { if (keyRollover != null) it.copy(rollover = keyRollover) else it })
 
     // 同一组文字只建一次：手指移动时圆盘不因标签“换了个对象”而整个重画。
     val discLabels = if (flick == null && letters == null && !fourteenSingle) null else gestureActions.let { actions ->

@@ -57,6 +57,8 @@ internal data class KeyGestureActions(
      * enters nothing.
      */
     val freeDirection: Boolean = false,
+    /** 26 键单字母键：按住时登记，别的手指按下就提前按点按结算，见 [KeyRollover]。 */
+    val rollover: KeyRollover? = null,
 )
 
 internal fun KeyGestureActions.withLetterSwipes(
@@ -143,6 +145,15 @@ internal suspend fun PointerInputScope.detectExclusiveKeyGestures(
                 }
             }
         } else null
+        // 别的手指按下时已按点按结算（见 [KeyRollover]）：松手不再出字，也不再滑出角标。
+        var settled = false
+        val rolloverToken = actions.rollover?.takeIf { !actions.freeDirection }?.hold(down.id) {
+            if (!settled && !moved && !longPressed && verticalDrag == null && !flickClaimed && !crossedSwipeThreshold) {
+                settled = true
+                longPressJob?.cancel()
+                actions.onTap()
+            }
+        }
         try {
             while (true) {
                 val event = awaitPointerEvent()
@@ -196,7 +207,7 @@ internal suspend fun PointerInputScope.detectExclusiveKeyGestures(
                     actions.onPreview(SwipeState(isPressed = true, isLongPress = true,
                         longPressItems = items, selectedLongPressIndex = selectedIndex,
                         longPressDrawableIds = actions.longPressDrawableIds))
-                } else if (!longPressed) {
+                } else if (!longPressed && !settled) {
                     val hint = if (up) actions.upText else if (downSwipe) actions.downText else if (left) actions.leftText else if (right) actions.rightText else null
                     actions.onPreview(SwipeState(isSwiping = hint != null, swipeText = hint,
                         isSwipeDown = downSwipe, isPressed = !moved, pressedText = actions.text,
@@ -217,7 +228,7 @@ internal suspend fun PointerInputScope.detectExclusiveKeyGestures(
                 if (!change.pressed || nextDown != null) {
                     change.consume()
                     handover = nextDown
-                    when {
+                    if (!settled) when {
                         longPressed -> items.getOrNull(selectedIndex)?.let { actions.onLongPressSelect?.invoke(it) }
                         up -> actions.onUp?.invoke(actions.upText.orEmpty())
                         downSwipe -> actions.onDown?.invoke(actions.downText.orEmpty())
@@ -242,6 +253,7 @@ internal suspend fun PointerInputScope.detectExclusiveKeyGestures(
                 }
             }
         } finally {
+            rolloverToken?.let { actions.rollover?.release(it) }
             longPressJob?.cancel()
             actions.onRelease()
             actions.onPreview(SwipeState())

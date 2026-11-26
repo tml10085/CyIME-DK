@@ -268,6 +268,8 @@ fun KeyboardLayout(
         SplitKeyboardGeometry.splitStraddlingPairs(keyRows[2], letterSideKeyWeight),
     ) + keyRows.drop(3) else keyRows
     val shiftSlideTargets = remember(uiState.currentSchemaId, isAsciiMode) { ShiftSlideTargets() }
+    // 先按下的字母键先出字（双指快打时后按的键先抬起），见 [KeyRollover]。
+    val keyRollover = remember { KeyRollover() }
     val dragSpace = LocalKeyDragSpace.current
     val shiftMode by viewModel.shiftMode.collectAsStateWithLifecycle()
     // 14 键按住 Shift 拖动时，双字母键拆回单字母键，键帽显示手指实际停的那个字母；松开 Shift 恢复（用户 10-21）。
@@ -557,6 +559,7 @@ fun KeyboardLayout(
         LocalHoneycombKeys provides honeycomb,
         LocalCustomAccent provides KeyboardThemes.getPrimaryColor(uiState.themeId, uiState.isDarkTheme),
         LocalShiftSlideTargets provides shiftSlideTargets,
+        LocalKeyRollover provides keyRollover,
         LocalLetterGlide provides glideEnabled,
         LocalKeyCornerRadius provides kbKey.cornerRadius.dp,
         LocalEnterKeyColors provides KeyboardKeyColors(KeyboardThemes.getEnterKeyColor(uiState.themeId, uiState.isDarkTheme), specialKeyTextColor),
@@ -573,6 +576,7 @@ fun KeyboardLayout(
                 liveKeyboardBounds.coordinates = coordinates
                 shiftSlideTargets.keyboardBounds = dragSpace.bounds(coordinates)
             }
+            .keyRollover(keyRollover)
             // 轨迹原点与键位同用键盘卡片坐标（未旋转时与 boundsInRoot 相同），旋转的悬浮键盘滑行落在手指下的键。
             .glideTyping(glideEnabled, geometry, { shiftSlideTargets.keyboardBounds.topLeft }, glideTrail, onGlideTrace, onGlideProgress,
                 onEnd = { glidePreview.stop(); callbacks.onGlidePreviewEnd?.invoke() })
